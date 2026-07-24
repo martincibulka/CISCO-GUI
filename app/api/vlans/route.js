@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { openDb } from '@/lib/db';
+import { verifySession, hasPermission } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -13,6 +14,16 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const session = await verifySession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allowed = await hasPermission('edit_switches');
+  if (!allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu VLANov' }, { status: 403 });
+  }
+
   try {
     const { vlan_id, name } = await request.json();
 
@@ -41,6 +52,16 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  const session = await verifySession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allowed = await hasPermission('edit_switches');
+  if (!allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu VLANov' }, { status: 403 });
+  }
+
   try {
     const { vlan_id } = await request.json();
     if (!vlan_id) {

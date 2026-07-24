@@ -9,6 +9,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editPassword, setEditPassword] = useState("");
   const [editUserRole, setEditUserRole] = useState("používateľ");
+  const [rolePickerUserId, setRolePickerUserId] = useState(null);
   
   // Roles state
   const [roles, setRoles] = useState([]);
@@ -18,6 +19,21 @@ export default function SettingsModal({ isOpen, onClose }) {
 
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("users");
+  const [permissions, setPermissions] = useState({ edit_users: false, edit_switches: false, edit_roles: false });
+
+  const fetchPermissions = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.permissions) {
+          setPermissions(data.permissions);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch permissions", e);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -53,6 +69,7 @@ export default function SettingsModal({ isOpen, onClose }) {
     if (isOpen) {
       fetchUsers();
       fetchRoles();
+      fetchPermissions();
       setError("");
       setNewUsername("");
       setNewPassword("");
@@ -108,6 +125,26 @@ export default function SettingsModal({ isOpen, onClose }) {
         fetchUsers();
       } else {
         setError(data.error || "Nepodarilo sa upraviť používateľa");
+      }
+    } catch (err) {
+      setError("Chyba spojenia so serverom");
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    setError("");
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRolePickerUserId(null);
+        fetchUsers();
+      } else {
+        setError(data.error || "Nepodarilo sa zmeniť oprávnenie");
       }
     } catch (err) {
       setError("Chyba spojenia so serverom");
@@ -325,19 +362,39 @@ export default function SettingsModal({ isOpen, onClose }) {
                             <div style={{ flex: 2, fontWeight: '500', color: '#f1f5f9' }}>
                               {u.username}
                             </div>
-                            <div style={{ flex: 1.5 }}>
-                              {isEditing ? (
+                            <div style={{ flex: 1.5, position: 'relative' }}>
+                              {rolePickerUserId === u.id ? (
                                 <select
-                                  value={editUserRole}
-                                  onChange={(e) => setEditUserRole(e.target.value)}
-                                  style={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '4px 8px', color: '#f1f5f9', fontSize: '1.3rem', width: '130px' }}
+                                  autoFocus
+                                  value={u.role || 'používateľ'}
+                                  onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                                  onBlur={() => setRolePickerUserId(null)}
+                                  style={{ backgroundColor: '#1e293b', border: '1px solid #38bdf8', borderRadius: '6px', padding: '4px 8px', color: '#f1f5f9', fontSize: '1.2rem', width: '140px', cursor: 'pointer', outline: 'none' }}
                                 >
                                   {roles.map(r => (
                                     <option key={r.id} value={r.name}>{r.name}</option>
                                   ))}
                                 </select>
                               ) : (
-                                <span style={{ color: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '1.2rem', fontWeight: '600', textTransform: 'uppercase' }}>
+                                <span
+                                  onClick={permissions.edit_users ? () => setRolePickerUserId(u.id) : undefined}
+                                  title={permissions.edit_users ? 'Kliknite pre zmenu oprávnenia' : ''}
+                                  style={{
+                                    color: '#38bdf8',
+                                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                                    padding: '3px 10px',
+                                    borderRadius: '4px',
+                                    fontSize: '1.2rem',
+                                    fontWeight: '600',
+                                    textTransform: 'uppercase',
+                                    cursor: permissions.edit_users ? 'pointer' : 'default',
+                                    border: permissions.edit_users ? '1px solid transparent' : 'none',
+                                    transition: 'border-color 0.2s, background 0.2s',
+                                    display: 'inline-block'
+                                  }}
+                                  onMouseOver={(e) => { if (permissions.edit_users) { e.currentTarget.style.borderColor = '#38bdf8'; e.currentTarget.style.backgroundColor = 'rgba(56,189,248,0.2)'; }}}
+                                  onMouseOut={(e) => { if (permissions.edit_users) { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.backgroundColor = 'rgba(56,189,248,0.1)'; }}}
+                                >
                                   {u.role || 'používateľ'}
                                 </span>
                               )}
@@ -367,22 +424,29 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 </div>
                               ) : (
                                 <>
-                                  <button
-                                    onClick={() => { setEditingUserId(u.id); setEditUserRole(u.role || 'používateľ'); setEditPassword(""); }}
-                                    style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                    onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
-                                    onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                                  >
-                                    Zmeniť heslo
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteUser(u.id)}
-                                    style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                    onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                                    onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                                  >
-                                    Vymazať
-                                  </button>
+                                  {permissions.edit_users && (
+                                    <>
+                                      <button
+                                        onClick={() => { setEditingUserId(u.id); setEditUserRole(u.role || 'používateľ'); setEditPassword(""); }}
+                                        style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                        onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
+                                        onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                      >
+                                        Zmeniť heslo
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteUser(u.id)}
+                                        style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                        onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                        onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                      >
+                                        Vymazať
+                                      </button>
+                                    </>
+                                  )}
+                                  {!permissions.edit_users && (
+                                    <span style={{ color: '#64748b', fontSize: '1.2rem' }}>Bez prístupu</span>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -394,40 +458,42 @@ export default function SettingsModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Add User Form */}
-                <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
-                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nového používateľa</h3>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder="Používateľské meno"
-                      value={newUsername}
-                      onChange={(e) => setNewUsername(e.target.value)}
-                      style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
-                    />
-                    <input
-                      type="password"
-                      placeholder="Heslo"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
-                    />
-                    <select
-                      value={newUserRole}
-                      onChange={(e) => setNewUserRole(e.target.value)}
-                      style={{ flex: 1.5, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem', height: '37px' }}
+                {permissions.edit_users && (
+                  <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nového používateľa</h3>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder="Používateľské meno"
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Heslo"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                      />
+                      <select
+                        value={newUserRole}
+                        onChange={(e) => setNewUserRole(e.target.value)}
+                        style={{ flex: 1.5, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem', height: '37px' }}
+                      >
+                        {roles.map(r => (
+                          <option key={r.id} value={r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
                     >
-                      {roles.map(r => (
-                        <option key={r.id} value={r.name}>{r.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="submit"
-                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
-                  >
-                    + Pridať používateľa
-                  </button>
-                </form>
+                      + Pridať používateľa
+                    </button>
+                  </form>
+                )}
               </>
             )}
 
@@ -485,16 +551,16 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 </div>
                               ) : (
                                 <span 
-                                  onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
-                                  title="Kliknite pre úpravu"
+                                  onClick={() => { if (permissions.edit_roles) { setEditingRoleId(r.id); setEditRoleName(r.name); } }}
+                                  title={permissions.edit_roles ? "Kliknite pre úpravu" : ""}
                                   style={{ 
                                     fontWeight: '500', 
                                     color: '#38bdf8', 
-                                    cursor: 'pointer',
+                                    cursor: permissions.edit_roles ? 'pointer' : 'default',
                                     transition: 'color 0.2s'
                                   }}
-                                  onMouseOver={(e) => e.target.style.color = '#7dd3fc'}
-                                  onMouseOut={(e) => e.target.style.color = '#38bdf8'}
+                                  onMouseOver={(e) => { if (permissions.edit_roles) e.target.style.color = '#7dd3fc'; }}
+                                  onMouseOut={(e) => { if (permissions.edit_roles) e.target.style.color = '#38bdf8'; }}
                                 >
                                   {r.name}
                                 </span>
@@ -506,6 +572,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                               <input
                                 type="checkbox"
                                 checked={r.edit_users === 1}
+                                disabled={!permissions.edit_roles}
                                 onChange={async (e) => {
                                   try {
                                     const res = await fetch(`/api/roles/${r.id}`, {
@@ -523,7 +590,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     setError("Chyba pripojenia k serveru");
                                   }
                                 }}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                style={{ width: '18px', height: '18px', cursor: permissions.edit_roles ? 'pointer' : 'default' }}
                               />
                             </div>
 
@@ -532,6 +599,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                               <input
                                 type="checkbox"
                                 checked={r.edit_switches === 1}
+                                disabled={!permissions.edit_roles}
                                 onChange={async (e) => {
                                   try {
                                     const res = await fetch(`/api/roles/${r.id}`, {
@@ -549,7 +617,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     setError("Chyba pripojenia k serveru");
                                   }
                                 }}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                style={{ width: '18px', height: '18px', cursor: permissions.edit_roles ? 'pointer' : 'default' }}
                               />
                             </div>
 
@@ -558,6 +626,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                               <input
                                 type="checkbox"
                                 checked={r.edit_roles === 1}
+                                disabled={!permissions.edit_roles}
                                 onChange={async (e) => {
                                   try {
                                     const res = await fetch(`/api/roles/${r.id}`, {
@@ -575,13 +644,13 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     setError("Chyba pripojenia k serveru");
                                   }
                                 }}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                style={{ width: '18px', height: '18px', cursor: permissions.edit_roles ? 'pointer' : 'default' }}
                               />
                             </div>
 
                             {/* Delete X Button */}
                             <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-                              {r.name !== 'admin' && !isEditing && (
+                              {permissions.edit_roles && r.name !== 'admin' && !isEditing && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
                                   title="Vymazať oprávnenie"
@@ -614,24 +683,26 @@ export default function SettingsModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Add Role Form */}
-                <form onSubmit={handleAddRole} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
-                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nové oprávnenie</h3>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <input
-                      type="text"
-                      placeholder="Názov oprávnenia (napr. admin, používateľ)"
-                      value={newRoleName}
-                      onChange={(e) => setNewRoleName(e.target.value)}
-                      style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
-                  >
-                    + Pridať oprávnenie
-                  </button>
-                </form>
+                {permissions.edit_roles && (
+                  <form onSubmit={handleAddRole} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nové oprávnenie</h3>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <input
+                        type="text"
+                        placeholder="Názov oprávnenia (napr. admin, používateľ)"
+                        value={newRoleName}
+                        onChange={(e) => setNewRoleName(e.target.value)}
+                        style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
+                    >
+                      + Pridať oprávnenie
+                    </button>
+                  </form>
+                )}
               </>
             )}
           </div>

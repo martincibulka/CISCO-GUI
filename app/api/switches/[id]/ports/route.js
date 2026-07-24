@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { openDb } from '@/lib/db';
-import { verifySession } from '@/lib/auth';
+import { verifySession, hasPermission } from '@/lib/auth';
 
 export async function GET(request, { params }) {
   const { id } = await params;
@@ -38,6 +38,11 @@ export async function POST(request, { params }) {
     const session = await verifySession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const allowed = await hasPermission('edit_switches');
+    if (!allowed) {
+      return NextResponse.json({ error: 'Nedostatočné oprávnenia pre úpravu konfigurácie switcha' }, { status: 403 });
     }
 
     const data = await request.json();

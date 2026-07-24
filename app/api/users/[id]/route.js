@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { openDb } from '@/lib/db';
-import { verifySession } from '@/lib/auth';
+import { verifySession, hasPermission } from '@/lib/auth';
 
 export async function PUT(request, { params }) {
   const session = await verifySession();
@@ -10,6 +10,13 @@ export async function PUT(request, { params }) {
   }
 
   const { id } = await params;
+  const isSelf = Number(id) === Number(session.userId);
+
+  // Allow self-edit (own username/password). Role changes & editing others require edit_users.
+  const allowed = await hasPermission('edit_users');
+  if (!isSelf && !allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu používateľov' }, { status: 403 });
+  }
 
   try {
     const { username, password, role } = await request.json();
@@ -20,8 +27,11 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Používateľ neexistuje' }, { status: 404 });
     }
 
+    // Non-admins can only change their own username/password – not role
+    const effectiveRole = (allowed && role) ? role : user.role;
+
     let query = 'UPDATE app_users SET username = ?, role = ?';
-    let args = [username || user.username, role || user.role || 'používateľ'];
+    let args = [username || user.username, effectiveRole || user.role || 'používateľ'];
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);
@@ -43,6 +53,11 @@ export async function DELETE(request, { params }) {
   const session = await verifySession();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allowed = await hasPermission('edit_users');
+  if (!allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu používateľov' }, { status: 403 });
   }
 
   const { id } = await params;

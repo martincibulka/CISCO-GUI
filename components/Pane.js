@@ -64,6 +64,18 @@ export default function Pane({ title }) {
   const [newVlanId, setNewVlanId] = useState('');
   const [newVlanName, setNewVlanName] = useState('');
   const [dbPorts, setDbPorts] = useState({});
+  const [permissions, setPermissions] = useState({ edit_users: false, edit_switches: false, edit_roles: false });
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.permissions) {
+          setPermissions(data.permissions);
+        }
+      })
+      .catch(err => console.error("Error fetching permissions", err));
+  }, []);
 
   const fetchDbPorts = async (switchId) => {
     if (!switchId) {
@@ -808,9 +820,11 @@ export default function Pane({ title }) {
               </option>
             ))}
           </select>
-          <button className="btn-action btn-edit" onClick={() => setIsModalOpen(true)}>
-            Edit
-          </button>
+          {permissions.edit_switches && (
+            <button className="btn-action btn-edit" onClick={() => setIsModalOpen(true)}>
+              Edit
+            </button>
+          )}
         </div>
         <div className="address-bar">
           <input
@@ -935,13 +949,15 @@ export default function Pane({ title }) {
               Port {contextMenu.port}
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                title="Confirm"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#22c55e', display: 'flex', alignItems: 'center', padding: '4px' }}
-                onClick={(e) => { e.stopPropagation(); handleSaveContextMenu(); }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              </button>
+              {permissions.edit_switches && (
+                <button 
+                  title="Confirm"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#22c55e', display: 'flex', alignItems: 'center', padding: '4px' }}
+                  onClick={(e) => { e.stopPropagation(); handleSaveContextMenu(); }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </button>
+              )}
               <button 
                 title="Close"
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', padding: '4px' }}
@@ -958,20 +974,22 @@ export default function Pane({ title }) {
               <span style={{ color: '#94a3b8', width: '120px' }}>Name</span>
               <input 
                 type="text" 
-                style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9' }} 
+                style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9', opacity: permissions.edit_switches ? 1 : 0.6 }} 
                 placeholder="Description" 
                 value={contextMenu.name || ''}
                 onChange={(e) => setContextMenu(prev => ({ ...prev, name: e.target.value }))}
+                disabled={!permissions.edit_switches}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#94a3b8', width: '120px' }}>Status</span>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div 
-                  onClick={() => setContextMenu(prev => ({ ...prev, status: prev.status === 'disabled' ? 'enabled' : 'disabled' }))}
+                  onClick={() => { if (permissions.edit_switches) setContextMenu(prev => ({ ...prev, status: prev.status === 'disabled' ? 'enabled' : 'disabled' })); }}
                   style={{
                     width: '44px', height: '24px', backgroundColor: contextMenu.status !== 'disabled' ? '#22c55e' : '#ef4444',
-                    borderRadius: '12px', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s', flexShrink: 0
+                    borderRadius: '12px', position: 'relative', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', transition: 'background-color 0.2s', flexShrink: 0,
+                    opacity: permissions.edit_switches ? 1 : 0.6
                   }}
                 >
                   <div style={{
@@ -989,9 +1007,10 @@ export default function Pane({ title }) {
               <span style={{ color: '#94a3b8', width: '120px' }}>Vlan</span>
               <div style={{ flex: 1, display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <select 
-                  style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9' }}
+                  style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9', opacity: permissions.edit_switches ? 1 : 0.6 }}
                   value={contextMenu.vlan || ''}
                   onChange={(e) => setContextMenu(prev => ({ ...prev, vlan: e.target.value }))}
+                  disabled={!permissions.edit_switches}
                 >
                   <option value="">-- Select --</option>
                   {vlans.map(v => (
@@ -1000,19 +1019,21 @@ export default function Pane({ title }) {
                     </option>
                   ))}
                 </select>
-                <button
-                  title="Spravovať VLANy"
-                  onClick={(e) => { e.stopPropagation(); setVlanEditorOpen(prev => !prev); }}
-                  style={{ background: vlanEditorOpen ? 'rgba(56,189,248,0.15)' : 'transparent', border: '1px solid #475569', borderRadius: '4px', cursor: 'pointer', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '5px 6px', flexShrink: 0, transition: 'background 0.2s' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
+                {permissions.edit_switches && (
+                  <button
+                    title="Spravovať VLANy"
+                    onClick={(e) => { e.stopPropagation(); setVlanEditorOpen(prev => !prev); }}
+                    style={{ background: vlanEditorOpen ? 'rgba(56,189,248,0.15)' : 'transparent', border: '1px solid #475569', borderRadius: '4px', cursor: 'pointer', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '5px 6px', flexShrink: 0, transition: 'background 0.2s' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
-            {vlanEditorOpen && (
+            {vlanEditorOpen && permissions.edit_switches && (
               <div style={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ fontSize: '1.2rem', fontWeight: '600', color: '#38bdf8', marginBottom: '4px' }}>Správa zoznamu VLAN</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '140px', overflowY: 'auto' }}>
@@ -1059,9 +1080,10 @@ export default function Pane({ title }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#94a3b8', width: '120px' }}>Port Security</span>
               <select 
-                style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9' }}
+                style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 8px', color: '#f1f5f9', opacity: permissions.edit_switches ? 1 : 0.6 }}
                 value={contextMenu.portSecurity || '0'}
                 onChange={(e) => setContextMenu(prev => ({ ...prev, portSecurity: e.target.value }))}
+                disabled={!permissions.edit_switches}
               >
                 <option value="0">Disabled</option>
                 <option value="1">1</option>

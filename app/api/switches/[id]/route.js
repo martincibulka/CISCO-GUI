@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
 import { openDb } from '@/lib/db';
+import { verifySession, hasPermission } from '@/lib/auth';
 
 export async function PUT(request, { params }) {
+  const session = await verifySession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allowed = await hasPermission('edit_switches');
+  if (!allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu switchov' }, { status: 403 });
+  }
+
   try {
     const { id } = await params;
     const { name, ip_address, username, password, enable_password } = await request.json();
@@ -22,6 +33,16 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  const session = await verifySession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const allowed = await hasPermission('edit_switches');
+  if (!allowed) {
+    return NextResponse.json({ error: 'Nedostatočné oprávnenia pre správu switchov' }, { status: 403 });
+  }
+
   try {
     const { id } = await params;
     const db = await openDb();
