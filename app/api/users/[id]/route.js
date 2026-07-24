@@ -12,7 +12,7 @@ export async function PUT(request, { params }) {
   const { id } = await params;
 
   try {
-    const { username, password } = await request.json();
+    const { username, password, role } = await request.json();
     const db = await openDb();
 
     const user = await db.get('SELECT * FROM app_users WHERE id = ?', [id]);
@@ -20,8 +20,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Používateľ neexistuje' }, { status: 404 });
     }
 
-    let query = 'UPDATE app_users SET username = ?';
-    let args = [username || user.username];
+    let query = 'UPDATE app_users SET username = ?, role = ?';
+    let args = [username || user.username, role || user.role || 'používateľ'];
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);

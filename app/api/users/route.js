@@ -11,7 +11,7 @@ export async function GET() {
 
   try {
     const db = await openDb();
-    const users = await db.all('SELECT id, username FROM app_users');
+    const users = await db.all('SELECT id, username, role FROM app_users');
     return NextResponse.json(users);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -25,7 +25,7 @@ export async function POST(request) {
   }
 
   try {
-    const { username, password } = await request.json();
+    const { username, password, role } = await request.json();
     if (!username || !password) {
       return NextResponse.json({ error: 'Meno a heslo sú povinné' }, { status: 400 });
     }
@@ -37,7 +37,7 @@ export async function POST(request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    await db.run('INSERT INTO app_users (username, password_hash) VALUES (?, ?)', [username, passwordHash]);
+    await db.run('INSERT INTO app_users (username, password_hash, role) VALUES (?, ?, ?)', [username, passwordHash, role || 'používateľ']);
     
     return NextResponse.json({ success: true });
   } catch (error) {

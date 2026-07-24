@@ -5,8 +5,10 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [users, setUsers] = useState([]);
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("používateľ");
   const [editingUserId, setEditingUserId] = useState(null);
   const [editPassword, setEditPassword] = useState("");
+  const [editUserRole, setEditUserRole] = useState("používateľ");
   
   // Roles state
   const [roles, setRoles] = useState([]);
@@ -34,7 +36,13 @@ export default function SettingsModal({ isOpen, onClose }) {
       const res = await fetch("/api/roles");
       if (res.ok) {
         const data = await res.json();
-        setRoles(data);
+        const sortedData = data.sort((a, b) => a.name.localeCompare(b.name));
+        setRoles(sortedData);
+        if (sortedData.length > 0) {
+          // Default to the first role or 'používateľ' if present
+          const hasPoužívateľ = sortedData.find(r => r.name === 'používateľ');
+          setNewUserRole(hasPoužívateľ ? 'používateľ' : sortedData[0].name);
+        }
       }
     } catch (e) {
       console.error("Failed to fetch roles", e);
@@ -70,7 +78,7 @@ export default function SettingsModal({ isOpen, onClose }) {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: newUsername, password: newPassword })
+        body: JSON.stringify({ username: newUsername, password: newPassword, role: newUserRole })
       });
       const data = await res.json();
       if (res.ok) {
@@ -85,17 +93,13 @@ export default function SettingsModal({ isOpen, onClose }) {
     }
   };
 
-  const handleUpdatePassword = async (id) => {
+  const handleUpdateUser = async (id) => {
     setError("");
-    if (!editPassword) {
-      setError("Nové heslo nemôže byť prázdne");
-      return;
-    }
     try {
       const res = await fetch(`/api/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: editPassword })
+        body: JSON.stringify({ password: editPassword, role: editUserRole })
       });
       const data = await res.json();
       if (res.ok) {
@@ -103,7 +107,7 @@ export default function SettingsModal({ isOpen, onClose }) {
         setEditPassword("");
         fetchUsers();
       } else {
-        setError(data.error || "Nepodarilo sa zmeniť heslo");
+        setError(data.error || "Nepodarilo sa upraviť používateľa");
       }
     } catch (err) {
       setError("Chyba spojenia so serverom");
@@ -292,80 +296,130 @@ export default function SettingsModal({ isOpen, onClose }) {
 
             {activeTab === "users" && (
               <>
-                {/* User List */}
+                {/* User List Table */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálni používatelia</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {users.map(u => (
-                      <div key={u.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', gap: '12px' }}>
-                        <span style={{ fontSize: '1.5rem', fontWeight: '500', color: '#f1f5f9' }}>{u.username}</span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {editingUserId === u.id ? (
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <input
-                                type="password"
-                                placeholder="Nové heslo"
-                                value={editPassword}
-                                onChange={(e) => setEditPassword(e.target.value)}
-                                style={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '150px' }}
-                              />
-                              <button
-                                onClick={() => handleUpdatePassword(u.id)}
-                                style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
-                              >
-                                Uložiť
-                              </button>
-                              <button
-                                onClick={() => { setEditingUserId(null); setEditPassword(""); }}
-                                style={{ backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
-                              >
-                                Zrušiť
-                              </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
+                    {/* Table Header */}
+                    <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
+                      <div style={{ flex: 2 }}>Meno</div>
+                      <div style={{ flex: 1.5 }}>Rola</div>
+                      <div style={{ flex: 3.5, textAlign: 'right' }}>Úpravy</div>
+                    </div>
+                    {/* Table Body */}
+                    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '250px', overflowY: 'auto' }}>
+                      {users.map((u, index) => {
+                        const isEditing = editingUserId === u.id;
+                        return (
+                          <div 
+                            key={u.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              padding: '12px 16px', 
+                              backgroundColor: index % 2 === 0 ? '#1e293b' : '#1b2537', 
+                              borderBottom: index === users.length - 1 ? 'none' : '1px solid #334155',
+                              fontSize: '1.4rem'
+                            }}
+                          >
+                            <div style={{ flex: 2, fontWeight: '500', color: '#f1f5f9' }}>
+                              {u.username}
                             </div>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => setEditingUserId(u.id)}
-                                style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                              >
-                                Zmeniť heslo
-                              </button>
-                              <button
-                                onClick={() => handleDeleteUser(u.id)}
-                                style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                              >
-                                Vymazať
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                            <div style={{ flex: 1.5 }}>
+                              {isEditing ? (
+                                <select
+                                  value={editUserRole}
+                                  onChange={(e) => setEditUserRole(e.target.value)}
+                                  style={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '4px 8px', color: '#f1f5f9', fontSize: '1.3rem', width: '130px' }}
+                                >
+                                  {roles.map(r => (
+                                    <option key={r.id} value={r.name}>{r.name}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span style={{ color: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '1.2rem', fontWeight: '600', textTransform: 'uppercase' }}>
+                                  {u.role || 'používateľ'}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ flex: 3.5, display: 'flex', justifyContent: 'flex-end', gap: '8px', alignItems: 'center' }}>
+                              {isEditing ? (
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <input
+                                    type="password"
+                                    placeholder="Nové heslo"
+                                    value={editPassword}
+                                    onChange={(e) => setEditPassword(e.target.value)}
+                                    style={{ backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '135px' }}
+                                  />
+                                  <button
+                                    onClick={() => handleUpdateUser(u.id)}
+                                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
+                                  >
+                                    Uložiť
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditingUserId(null); setEditPassword(""); }}
+                                    style={{ backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
+                                  >
+                                    Zrušiť
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => { setEditingUserId(u.id); setEditUserRole(u.role || 'používateľ'); setEditPassword(""); }}
+                                    style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                    onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
+                                    onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                  >
+                                    Zmeniť heslo
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                    onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                    onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                  >
+                                    Vymazať
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
                 {/* Add User Form */}
                 <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
                   <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nového používateľa</h3>
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <input
                       type="text"
                       placeholder="Používateľské meno"
                       value={newUsername}
                       onChange={(e) => setNewUsername(e.target.value)}
-                      style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                      style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
                     />
                     <input
                       type="password"
                       placeholder="Heslo"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                      style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
                     />
+                    <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value)}
+                      style={{ flex: 1.5, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem', height: '37px' }}
+                    >
+                      {roles.map(r => (
+                        <option key={r.id} value={r.name}>{r.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <button
                     type="submit"
