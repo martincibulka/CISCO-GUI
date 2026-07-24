@@ -13,7 +13,7 @@ export default function AppHeader({ username, version }) {
           className="app-title" 
           style={{ cursor: 'pointer', userSelect: 'none' }}
           onClick={() => setIsSettingsOpen(true)}
-          title="Open Settings"
+          title="Nastavenia"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
