@@ -11,23 +11,28 @@ export async function PUT(request, { params }) {
   const { id } = await params;
 
   try {
-    const { name } = await request.json();
-    if (!name || name.trim() === "") {
-      return NextResponse.json({ error: 'Názov oprávnenia nemôže byť prázdny' }, { status: 400 });
-    }
-
+    const { name, edit_users, edit_switches } = await request.json();
     const db = await openDb();
+    
     const role = await db.get('SELECT * FROM app_roles WHERE id = ?', [id]);
     if (!role) {
       return NextResponse.json({ error: 'Oprávnenie neexistuje' }, { status: 404 });
     }
 
-    const existing = await db.get('SELECT * FROM app_roles WHERE name = ? AND id != ?', [name.trim(), id]);
+    const targetName = name !== undefined ? name.trim() : role.name;
+    if (!targetName) {
+      return NextResponse.json({ error: 'Názov oprávnenia nemôže byť prázdny' }, { status: 400 });
+    }
+
+    const existing = await db.get('SELECT * FROM app_roles WHERE name = ? AND id != ?', [targetName, id]);
     if (existing) {
       return NextResponse.json({ error: 'Oprávnenie s týmto názvom už existuje' }, { status: 400 });
     }
 
-    await db.run('UPDATE app_roles SET name = ? WHERE id = ?', [name.trim(), id]);
+    const editUsersVal = edit_users !== undefined ? (edit_users ? 1 : 0) : role.edit_users;
+    const editSwitchesVal = edit_switches !== undefined ? (edit_switches ? 1 : 0) : role.edit_switches;
+
+    await db.run('UPDATE app_roles SET name = ?, edit_users = ?, edit_switches = ? WHERE id = ?', [targetName, editUsersVal, editSwitchesVal, id]);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

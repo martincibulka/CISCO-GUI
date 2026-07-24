@@ -433,81 +433,156 @@ export default function SettingsModal({ isOpen, onClose }) {
 
             {activeTab === "roles" && (
               <>
-                {/* Roles List */}
+                {/* Roles List Table */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálne oprávnenia</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {roles.map(r => (
-                      <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', gap: '12px' }}>
-                        {editingRoleId === r.id ? (
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
+                    {/* Table Header */}
+                    <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
+                      <div style={{ flex: 2.5 }}>Oprávnenie</div>
+                      <div style={{ flex: 2, textAlign: 'center' }}>Editovanie užívateľov</div>
+                      <div style={{ flex: 2, textAlign: 'center' }}>Editovanie switchov</div>
+                      <div style={{ width: '40px', textAlign: 'right' }}></div>
+                    </div>
+                    {/* Table Body */}
+                    <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '250px', overflowY: 'auto' }}>
+                      {roles.map((r, index) => {
+                        const isEditing = editingRoleId === r.id;
+                        return (
+                          <div 
+                            key={r.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              padding: '12px 16px', 
+                              backgroundColor: index % 2 === 0 ? '#1e293b' : '#1b2537', 
+                              borderBottom: index === roles.length - 1 ? 'none' : '1px solid #334155',
+                              fontSize: '1.4rem'
+                            }}
+                          >
+                            <div style={{ flex: 2.5 }}>
+                              {isEditing ? (
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <input
+                                    type="text"
+                                    placeholder="Názov oprávnenia"
+                                    value={editRoleName}
+                                    onChange={(e) => setEditRoleName(e.target.value)}
+                                    style={{ backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '150px' }}
+                                  />
+                                  <button
+                                    onClick={() => handleUpdateRole(r.id)}
+                                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 10px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: '600' }}
+                                  >
+                                    Uložiť
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditingRoleId(null); setEditRoleName(""); }}
+                                    style={{ backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 10px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: '600' }}
+                                  >
+                                    Zrušiť
+                                  </button>
+                                </div>
+                              ) : (
+                                <span 
+                                  onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
+                                  title="Kliknite pre úpravu"
+                                  style={{ 
+                                    fontWeight: '500', 
+                                    color: '#38bdf8', 
+                                    cursor: 'pointer',
+                                    transition: 'color 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.target.style.color = '#7dd3fc'}
+                                  onMouseOut={(e) => e.target.style.color = '#38bdf8'}
+                                >
+                                  {r.name}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Checkbox: edit_users */}
+                            <div style={{ flex: 2, display: 'flex', justifyContent: 'center' }}>
                               <input
-                                type="text"
-                                placeholder="Názov oprávnenia"
-                                value={editRoleName}
-                                onChange={(e) => setEditRoleName(e.target.value)}
-                                style={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '180px' }}
+                                type="checkbox"
+                                checked={r.edit_users === 1}
+                                onChange={async (e) => {
+                                  try {
+                                    const res = await fetch(`/api/roles/${r.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ edit_users: e.target.checked })
+                                    });
+                                    if (res.ok) {
+                                      fetchRoles();
+                                    } else {
+                                      const data = await res.json();
+                                      setError(data.error || "Nepodarilo sa zmeniť oprávnenia");
+                                    }
+                                  } catch (err) {
+                                    setError("Chyba pripojenia k serveru");
+                                  }
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                               />
-                              <button
-                                onClick={() => handleUpdateRole(r.id)}
-                                style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
-                              >
-                                Uložiť
-                              </button>
-                              <button
-                                onClick={() => { setEditingRoleId(null); setEditRoleName(""); }}
-                                style={{ backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
-                              >
-                                Zrušiť
-                              </button>
+                            </div>
+
+                            {/* Checkbox: edit_switches */}
+                            <div style={{ flex: 2, display: 'flex', justifyContent: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={r.edit_switches === 1}
+                                onChange={async (e) => {
+                                  try {
+                                    const res = await fetch(`/api/roles/${r.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ edit_switches: e.target.checked })
+                                    });
+                                    if (res.ok) {
+                                      fetchRoles();
+                                    } else {
+                                      const data = await res.json();
+                                      setError(data.error || "Nepodarilo sa zmeniť oprávnenia");
+                                    }
+                                  } catch (err) {
+                                    setError("Chyba pripojenia k serveru");
+                                  }
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </div>
+
+                            {/* Delete X Button */}
+                            <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end' }}>
+                              {!isEditing && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
+                                  title="Vymazať oprávnenie"
+                                  style={{ 
+                                    background: 'transparent', 
+                                    border: 'none', 
+                                    cursor: 'pointer', 
+                                    color: '#ef4444', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    padding: '6px',
+                                    borderRadius: '50%',
+                                    transition: 'background-color 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <span 
-                              onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
-                              title="Kliknite pre úpravu"
-                              style={{ 
-                                fontSize: '1.5rem', 
-                                fontWeight: '500', 
-                                color: '#38bdf8', 
-                                cursor: 'pointer',
-                                transition: 'color 0.2s'
-                              }}
-                              onMouseOver={(e) => e.target.style.color = '#7dd3fc'}
-                              onMouseOut={(e) => e.target.style.color = '#38bdf8'}
-                            >
-                              {r.name}
-                            </span>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
-                                title="Vymazať oprávnenie"
-                                style={{ 
-                                  background: 'transparent', 
-                                  border: 'none', 
-                                  cursor: 'pointer', 
-                                  color: '#ef4444', 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  padding: '6px',
-                                  borderRadius: '50%',
-                                  transition: 'background-color 0.2s'
-                                }}
-                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                              >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
