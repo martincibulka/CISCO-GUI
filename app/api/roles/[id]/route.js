@@ -11,7 +11,7 @@ export async function PUT(request, { params }) {
   const { id } = await params;
 
   try {
-    const { name, edit_users, edit_switches } = await request.json();
+    const { name, edit_users, edit_switches, edit_roles } = await request.json();
     const db = await openDb();
     
     const role = await db.get('SELECT * FROM app_roles WHERE id = ?', [id]);
@@ -31,8 +31,9 @@ export async function PUT(request, { params }) {
 
     const editUsersVal = edit_users !== undefined ? (edit_users ? 1 : 0) : role.edit_users;
     const editSwitchesVal = edit_switches !== undefined ? (edit_switches ? 1 : 0) : role.edit_switches;
+    const editRolesVal = edit_roles !== undefined ? (edit_roles ? 1 : 0) : role.edit_roles;
 
-    await db.run('UPDATE app_roles SET name = ?, edit_users = ?, edit_switches = ? WHERE id = ?', [targetName, editUsersVal, editSwitchesVal, id]);
+    await db.run('UPDATE app_roles SET name = ?, edit_users = ?, edit_switches = ?, edit_roles = ? WHERE id = ?', [targetName, editUsersVal, editSwitchesVal, editRolesVal, id]);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -50,6 +51,15 @@ export async function DELETE(request, { params }) {
   try {
     const db = await openDb();
     
+    const role = await db.get('SELECT * FROM app_roles WHERE id = ?', [id]);
+    if (!role) {
+      return NextResponse.json({ error: 'Oprávnenie neexistuje' }, { status: 404 });
+    }
+
+    if (role.name === 'admin') {
+      return NextResponse.json({ error: 'Nemožno vymazať základné oprávnenie admin' }, { status: 400 });
+    }
+
     const rolesCount = await db.get('SELECT COUNT(*) as count FROM app_roles');
     if (rolesCount.count <= 1) {
       return NextResponse.json({ error: 'Nemožno vymazat posledné oprávnenie' }, { status: 400 });

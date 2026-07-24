@@ -438,9 +438,10 @@ export default function SettingsModal({ isOpen, onClose }) {
                   <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
                     {/* Table Header */}
                     <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
-                      <div style={{ flex: 2.5 }}>Oprávnenie</div>
-                      <div style={{ flex: 2, textAlign: 'center' }}>Editovanie užívateľov</div>
-                      <div style={{ flex: 2, textAlign: 'center' }}>Editovanie switchov</div>
+                      <div style={{ flex: 2 }}>Oprávnenie</div>
+                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie užívateľov</div>
+                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie switchov</div>
+                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie oprávnení</div>
                       <div style={{ width: '40px', textAlign: 'right' }}></div>
                     </div>
                     {/* Table Body */}
@@ -459,7 +460,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                               fontSize: '1.4rem'
                             }}
                           >
-                            <div style={{ flex: 2.5 }}>
+                            <div style={{ flex: 2 }}>
                               {isEditing ? (
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                   <input
@@ -467,7 +468,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     placeholder="Názov oprávnenia"
                                     value={editRoleName}
                                     onChange={(e) => setEditRoleName(e.target.value)}
-                                    style={{ backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '150px' }}
+                                    style={{ backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '130px' }}
                                   />
                                   <button
                                     onClick={() => handleUpdateRole(r.id)}
@@ -501,7 +502,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </div>
                             
                             {/* Checkbox: edit_users */}
-                            <div style={{ flex: 2, display: 'flex', justifyContent: 'center' }}>
+                            <div style={{ flex: 1.8, display: 'flex', justifyContent: 'center' }}>
                               <input
                                 type="checkbox"
                                 checked={r.edit_users === 1}
@@ -527,7 +528,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </div>
 
                             {/* Checkbox: edit_switches */}
-                            <div style={{ flex: 2, display: 'flex', justifyContent: 'center' }}>
+                            <div style={{ flex: 1.8, display: 'flex', justifyContent: 'center' }}>
                               <input
                                 type="checkbox"
                                 checked={r.edit_switches === 1}
@@ -552,9 +553,35 @@ export default function SettingsModal({ isOpen, onClose }) {
                               />
                             </div>
 
+                            {/* Checkbox: edit_roles */}
+                            <div style={{ flex: 1.8, display: 'flex', justifyContent: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={r.edit_roles === 1}
+                                onChange={async (e) => {
+                                  try {
+                                    const res = await fetch(`/api/roles/${r.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ edit_roles: e.target.checked })
+                                    });
+                                    if (res.ok) {
+                                      fetchRoles();
+                                    } else {
+                                      const data = await res.json();
+                                      setError(data.error || "Nepodarilo sa zmeniť oprávnenia");
+                                    }
+                                  } catch (err) {
+                                    setError("Chyba pripojenia k serveru");
+                                  }
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </div>
+
                             {/* Delete X Button */}
                             <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-                              {!isEditing && (
+                              {r.name !== 'admin' && !isEditing && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
                                   title="Vymazať oprávnenie"
