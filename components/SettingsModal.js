@@ -473,8 +473,6 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 fontWeight: '500', 
                                 color: '#38bdf8', 
                                 cursor: 'pointer',
-                                textDecoration: 'underline',
-                                textDecorationStyle: 'dotted',
                                 transition: 'color 0.2s'
                               }}
                               onMouseOver={(e) => e.target.style.color = '#7dd3fc'}
