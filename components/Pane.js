@@ -637,9 +637,10 @@ export default function Pane({ title }) {
 
     const macOutput = await fetchCommandOutput(`sh mac address-table int ${portName}`);
     if (macOutput) {
-       const macMatch = macOutput.match(/([0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4})/);
-       if (macMatch) {
-          setContextMenu(prev => ({ ...prev, mac: macMatch[1] }));
+       const matches = macOutput.match(/([0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4})/g);
+       if (matches && matches.length > 0) {
+          const uniqueMacs = [...new Set(matches)];
+          setContextMenu(prev => ({ ...prev, mac: uniqueMacs.join(", ") }));
        } else {
           setContextMenu(prev => ({ ...prev, mac: '-' }));
        }
@@ -1070,14 +1071,24 @@ export default function Pane({ title }) {
                 <option value="5">5</option>
               </select>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#94a3b8', width: '120px' }}>MAC Address</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span style={{ color: '#94a3b8', width: '120px', marginTop: '4px' }}>MAC Address</span>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: '#f1f5f9', fontFamily: 'monospace' }}>{contextMenu.mac || '-'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'monospace', color: '#f1f5f9' }}>
+                  {contextMenu.mac && contextMenu.mac !== '-' && contextMenu.mac !== 'Error' && contextMenu.mac !== 'Loading...' ? (
+                    contextMenu.mac.split(', ').map((macAddr, idx) => (
+                      <div key={idx} style={{ padding: '2px 6px', backgroundColor: '#0f172a', borderRadius: '4px', border: '1px solid #334155' }}>
+                        {macAddr}
+                      </div>
+                    ))
+                  ) : (
+                    <span>{contextMenu.mac || '-'}</span>
+                  )}
+                </div>
                 {contextMenu.port && (
                   <button 
                     title="Reset MAC address"
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px' }}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', alignSelf: 'flex-start' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       const cmds = `conf t\ninterface ${contextMenu.port}\nno switchport port-security mac-address sticky\nswitchport port-security mac-address sticky\nshutdown\nno shutdown\nend`;
