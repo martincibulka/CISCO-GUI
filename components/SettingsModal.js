@@ -303,7 +303,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                     {/* Table Header */}
                     <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
                       <div style={{ flex: 2 }}>Meno</div>
-                      <div style={{ flex: 1.5 }}>Rola</div>
+                      <div style={{ flex: 1.5 }}>Oprávnenie</div>
                       <div style={{ flex: 3.5, textAlign: 'right' }}>Úpravy</div>
                     </div>
                     {/* Table Body */}
