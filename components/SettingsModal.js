@@ -7,6 +7,13 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [newPassword, setNewPassword] = useState("");
   const [editingUserId, setEditingUserId] = useState(null);
   const [editPassword, setEditPassword] = useState("");
+  
+  // Roles state
+  const [roles, setRoles] = useState([]);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [editingRoleId, setEditingRoleId] = useState(null);
+  const [editRoleName, setEditRoleName] = useState("");
+
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("users");
 
@@ -22,14 +29,30 @@ export default function SettingsModal({ isOpen, onClose }) {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const res = await fetch("/api/roles");
+      if (res.ok) {
+        const data = await res.json();
+        setRoles(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch roles", e);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
+      fetchRoles();
       setError("");
       setNewUsername("");
       setNewPassword("");
       setEditingUserId(null);
       setEditPassword("");
+      setNewRoleName("");
+      setEditingRoleId(null);
+      setEditRoleName("");
       setActiveTab("users");
     }
   }, [isOpen]);
@@ -105,6 +128,75 @@ export default function SettingsModal({ isOpen, onClose }) {
     }
   };
 
+  // Roles CRUD handlers
+  const handleAddRole = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!newRoleName) {
+      setError("Názov oprávnenia je povinný");
+      return;
+    }
+    try {
+      const res = await fetch("/api/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newRoleName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewRoleName("");
+        fetchRoles();
+      } else {
+        setError(data.error || "Nepodarilo sa pridať oprávnenie");
+      }
+    } catch (err) {
+      setError("Chyba spojenia so serverom");
+    }
+  };
+
+  const handleUpdateRole = async (id) => {
+    setError("");
+    if (!editRoleName) {
+      setError("Názov oprávnenia nemôže byť prázdny");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/roles/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editRoleName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEditingRoleId(null);
+        setEditRoleName("");
+        fetchRoles();
+      } else {
+        setError(data.error || "Nepodarilo sa zmeniť oprávnenie");
+      }
+    } catch (err) {
+      setError("Chyba spojenia so serverom");
+    }
+  };
+
+  const handleDeleteRole = async (id) => {
+    if (!confirm("Naozaj chcete vymazať toto oprávnenie?")) return;
+    setError("");
+    try {
+      const res = await fetch(`/api/roles/${id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchRoles();
+      } else {
+        setError(data.error || "Nepodarilo sa vymazať oprávnenie");
+      }
+    } catch (err) {
+      setError("Chyba spojenia so serverom");
+    }
+  };
+
   return (
     <div className="modal-overlay" style={{ zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div 
@@ -136,7 +228,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           {/* Left Sidebar */}
           <div style={{ width: '220px', backgroundColor: '#0f172a', borderRight: '1px solid #334155', display: 'flex', flexDirection: 'column', padding: '12px 0', flexShrink: 0 }}>
             <button
-              onClick={() => setActiveTab("users")}
+              onClick={() => { setActiveTab("users"); setError(""); }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -162,18 +254,44 @@ export default function SettingsModal({ isOpen, onClose }) {
               </svg>
               Používatelia
             </button>
+
+            <button
+              onClick={() => { setActiveTab("roles"); setError(""); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%',
+                padding: '12px 24px',
+                background: activeTab === "roles" ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                border: 'none',
+                borderLeft: activeTab === "roles" ? '4px solid #38bdf8' : '4px solid transparent',
+                color: activeTab === "roles" ? '#38bdf8' : '#94a3b8',
+                textAlign: 'left',
+                fontSize: '1.4rem',
+                fontWeight: activeTab === "roles" ? '600' : '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Oprávnenia
+            </button>
           </div>
 
           {/* Right Content Area */}
           <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {error && (
+              <div style={{ padding: '10px 14px', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '4px', color: '#f87171', fontSize: '1.3rem' }}>
+                {error}
+              </div>
+            )}
+
             {activeTab === "users" && (
               <>
-                {error && (
-                  <div style={{ padding: '10px 14px', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '4px', color: '#f87171', fontSize: '1.3rem' }}>
-                    {error}
-                  </div>
-                )}
-
                 {/* User List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálni používatelia</h3>
@@ -254,6 +372,86 @@ export default function SettingsModal({ isOpen, onClose }) {
                     style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
                   >
                     + Pridať používateľa
+                  </button>
+                </form>
+              </>
+            )}
+
+            {activeTab === "roles" && (
+              <>
+                {/* Roles List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálne oprávnenia</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {roles.map(r => (
+                      <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', gap: '12px' }}>
+                        <span style={{ fontSize: '1.5rem', fontWeight: '500', color: '#f1f5f9' }}>{r.name}</span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {editingRoleId === r.id ? (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <input
+                                type="text"
+                                placeholder="Názov oprávnenia"
+                                value={editRoleName}
+                                onChange={(e) => setEditRoleName(e.target.value)}
+                                style={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '4px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', width: '180px' }}
+                              />
+                              <button
+                                onClick={() => handleUpdateRole(r.id)}
+                                style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
+                              >
+                                Uložiť
+                              </button>
+                              <button
+                                onClick={() => { setEditingRoleId(null); setEditRoleName(""); }}
+                                style={{ backgroundColor: '#64748b', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', fontWeight: '600' }}
+                              >
+                                Zrušiť
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
+                                style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
+                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                              >
+                                Upraviť
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRole(r.id)}
+                                style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
+                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                              >
+                                Vymazať
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Add Role Form */}
+                <form onSubmit={handleAddRole} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
+                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nové oprávnenie</h3>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder="Názov oprávnenia (napr. admin, používateľ)"
+                      value={newRoleName}
+                      onChange={(e) => setNewRoleName(e.target.value)}
+                      style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
+                  >
+                    + Pridať oprávnenie
                   </button>
                 </form>
               </>
