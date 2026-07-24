@@ -439,10 +439,9 @@ export default function SettingsModal({ isOpen, onClose }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {roles.map(r => (
                       <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', gap: '12px' }}>
-                        <span style={{ fontSize: '1.5rem', fontWeight: '500', color: '#f1f5f9' }}>{r.name}</span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {editingRoleId === r.id ? (
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {editingRoleId === r.id ? (
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flex: 1 }}>
                               <input
                                 type="text"
                                 placeholder="Názov oprávnenia"
@@ -463,27 +462,52 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 Zrušiť
                               </button>
                             </div>
-                          ) : (
-                            <>
+                          </div>
+                        ) : (
+                          <>
+                            <span 
+                              onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
+                              title="Kliknite pre úpravu"
+                              style={{ 
+                                fontSize: '1.5rem', 
+                                fontWeight: '500', 
+                                color: '#38bdf8', 
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                textDecorationStyle: 'dotted',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseOver={(e) => e.target.style.color = '#7dd3fc'}
+                              onMouseOut={(e) => e.target.style.color = '#38bdf8'}
+                            >
+                              {r.name}
+                            </span>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                               <button
-                                onClick={() => { setEditingRoleId(r.id); setEditRoleName(r.name); }}
-                                style={{ background: 'transparent', border: '1px solid #3b82f6', borderRadius: '4px', color: '#3b82f6', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(59, 130, 246, 0.1)'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
+                                title="Vymazať oprávnenie"
+                                style={{ 
+                                  background: 'transparent', 
+                                  border: 'none', 
+                                  cursor: 'pointer', 
+                                  color: '#ef4444', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  padding: '6px',
+                                  borderRadius: '50%',
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
-                                Upraviť
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
                               </button>
-                              <button
-                                onClick={() => handleDeleteRole(r.id)}
-                                style={{ background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', color: '#ef4444', padding: '6px 12px', cursor: 'pointer', fontSize: '1.3rem', transition: 'background 0.2s', fontWeight: '500' }}
-                                onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                                onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
-                              >
-                                Vymazať
-                              </button>
-                            </>
-                          )}
-                        </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
