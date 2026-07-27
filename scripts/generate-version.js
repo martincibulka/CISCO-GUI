@@ -4,78 +4,26 @@ const path = require('path');
 const projectDir = path.resolve(__dirname, '..');
 const versionFilePath = path.join(projectDir, 'lib', 'version.json');
 
-if (process.env.PRESERVE_VERSION === 'true' && fs.existsSync(versionFilePath)) {
-  try {
-    const existing = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'));
-    if (existing && existing.version) {
-      console.log(`Preserving uploaded version: ${existing.version}`);
-      process.exit(0);
-    }
-  } catch (e) {}
-}
+const date = new Date();
+const formatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Bratislava',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
 
-function getLatestMtime(dir) {
-  let maxMtime = 0;
-  
-  function walk(currentDir) {
-    const files = fs.readdirSync(currentDir);
-    for (const file of files) {
-      if (['node_modules', '.next', '.git', 'database.sqlite', 'deploy_temp'].includes(file)) {
-        continue;
-      }
-      const fullPath = path.join(currentDir, file);
-      try {
-        const stat = fs.statSync(fullPath);
-        if (stat.isDirectory()) {
-          walk(fullPath);
-        } else if (/\.(js|jsx|css|json|mjs)$/.test(file) && file !== 'version.json') {
-          if (stat.mtimeMs > maxMtime) {
-            maxMtime = stat.mtimeMs;
-          }
-        }
-      } catch (err) {
-        // Ignore files we cannot access
-      }
-    }
-  }
+const parts = formatter.formatToParts(date);
+const year = parts.find(p => p.type === 'year').value;
+const month = parts.find(p => p.type === 'month').value;
+const day = parts.find(p => p.type === 'day').value;
+let hour = parts.find(p => p.type === 'hour').value;
+if (hour === '24') hour = '00';
+const minute = parts.find(p => p.type === 'minute').value;
 
-  try {
-    walk(dir);
-  } catch (e) {
-    console.error('Error walking directory for version:', e);
-  }
-  
-  return maxMtime;
-}
-
-const forceCurrent = process.argv.includes('--current');
-const latestTimeMs = forceCurrent ? Date.now() : (getLatestMtime(projectDir) || Date.now());
-
-let versionStr = 'verzia 0.0.0';
-if (latestTimeMs > 0) {
-  const date = new Date(latestTimeMs);
-  
-  // Format specifically in Slovak timezone (Europe/Bratislava)
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Bratislava',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-  
-  const parts = formatter.formatToParts(date);
-  const year = parts.find(p => p.type === 'year').value;
-  const month = parts.find(p => p.type === 'month').value;
-  const day = parts.find(p => p.type === 'day').value;
-  let hour = parts.find(p => p.type === 'hour').value;
-  if (hour === '24') hour = '00';
-  const minute = parts.find(p => p.type === 'minute').value;
-  
-  versionStr = `verzia ${year}.${month}.${day}.${hour}.${minute}`;
-}
+const versionStr = `verzia ${year}.${month}.${day}.${hour}.${minute}`;
 
 fs.writeFileSync(versionFilePath, JSON.stringify({ version: versionStr }, null, 2));
 console.log(`Generated version: ${versionStr} -> ${versionFilePath}`);
