@@ -142,7 +142,7 @@ conn.on('ready', async () => {
     console.log('Rebuilding and restarting docker compose containers...');
     await executeCommand(
       conn,
-      `sudo -S sh -c 'cd "${targetDir}" && docker compose build --no-cache && docker compose down && docker compose up -d --remove-orphans'`,
+      `sudo -S sh -c 'cd "${targetDir}" && docker compose build --no-cache && docker compose down && fuser -k 3000/tcp 2>/dev/null || true && sleep 2 && docker compose up -d'`,
       password
     );
 
