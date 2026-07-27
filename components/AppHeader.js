@@ -1,10 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import UserMenu from "./UserMenu";
 import SettingsModal from "./SettingsModal";
 
 export default function AppHeader({ username, version }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyVersion = useCallback(() => {
+    navigator.clipboard.writeText(version).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [version]);
 
   return (
     <>
@@ -23,7 +31,12 @@ export default function AppHeader({ username, version }) {
             </svg>
             Cisco Switch Manager
           </span>
-          <span className="app-version" style={{ cursor: 'default' }}>{version}</span>
+          <span
+            className="app-version"
+            style={{ cursor: 'pointer' }}
+            onClick={copyVersion}
+            title={copied ? 'Skopírované! ✓' : 'Klikni pre skopírovanie'}
+          >{copied ? '✓ Skopírované' : version}</span>
         </h1>
         <UserMenu username={username} />
       </header>
