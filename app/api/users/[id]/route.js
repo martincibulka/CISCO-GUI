@@ -45,6 +45,9 @@ export async function PUT(request, { params }) {
     await db.run(query, args);
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error.message && error.message.includes('UNIQUE constraint failed: app_users.username')) {
+      return NextResponse.json({ error: 'Používateľ s týmto menom už existuje' }, { status: 409 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
