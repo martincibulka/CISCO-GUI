@@ -8,10 +8,22 @@ export default function AppHeader({ username, version }) {
   const [copied, setCopied] = useState(false);
 
   const copyVersion = useCallback(() => {
-    navigator.clipboard.writeText(version).then(() => {
+    try {
+      // Fallback pre HTTP (navigator.clipboard vyžaduje HTTPS)
+      const el = document.createElement('textarea');
+      el.value = version;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch (err) {
+      console.error('Kopírovanie zlyhalo:', err);
+    }
   }, [version]);
 
   return (
