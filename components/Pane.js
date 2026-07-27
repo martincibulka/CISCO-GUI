@@ -47,11 +47,27 @@ const reformatLines = (lines, dbPorts) => {
   });
 };
 
+const highlightMatch = (text, query) => {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} style={{ backgroundColor: 'rgba(56, 189, 248, 0.4)', color: '#fff', borderRadius: '2px', padding: '0 2px' }}>
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+};
+
 export default function Pane({ title }) {
   const [ipAddress, setIpAddress] = useState("");
   const [switches, setSwitches] = useState([]);
   const [selectedSwitch, setSelectedSwitch] = useState("");
   const [logs, setLogs] = useState([`[System] Initializing ${title}...`, "[System] Ready."]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [command, setCommand] = useState("");
@@ -845,13 +861,59 @@ export default function Pane({ title }) {
             Connect
           </button>
         </div>
+        <div className="address-bar" style={{ position: 'relative' }}>
+          <input
+            type="text"
+            className="address-input"
+            placeholder="🔍 Vyhľadať v portoch (názov, popis, VLAN, status)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ paddingRight: searchTerm ? '32px' : '12px' }}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                lineHeight: 1,
+                padding: '4px'
+              }}
+              title="Vymazať vyhľadávanie"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
       <div className="pane-content" ref={contentRef}>
         {logs.map((log, index) => {
           const portMatch = log.match(/^([A-Za-z]+\d+(?:\/\d+)*)\s/);
           const isPort = !!portMatch;
           const portName = isPort ? portMatch[1] : null;
+          const isHeader = log.trim().startsWith("Port") && log.includes("Status") && log.includes("Vlan");
           const isSelected = selectedPortIndex === index;
+
+          if (searchTerm.trim() !== "") {
+            const query = searchTerm.trim().toLowerCase();
+            const logLower = log.toLowerCase();
+            if (isPort) {
+              if (!logLower.includes(query)) {
+                return null;
+              }
+            } else if (!isHeader) {
+              if (!logLower.includes(query)) {
+                return null;
+              }
+            }
+          }
 
           return (
             <div 
@@ -880,7 +942,9 @@ export default function Pane({ title }) {
                 }
               }}
             >
-              <span style={{ whiteSpace: 'pre-wrap' }}>{log}</span>
+              <span style={{ whiteSpace: 'pre-wrap' }}>
+                {searchTerm.trim() !== "" ? highlightMatch(log, searchTerm.trim()) : log}
+              </span>
               {isSelected && (
                 <span 
                   title="Edit Port"
