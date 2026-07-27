@@ -1,13 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
+const projectDir = path.resolve(__dirname, '..');
+const versionFilePath = path.join(projectDir, 'lib', 'version.json');
+
+if (process.env.PRESERVE_VERSION === 'true' && fs.existsSync(versionFilePath)) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(versionFilePath, 'utf8'));
+    if (existing && existing.version) {
+      console.log(`Preserving uploaded version: ${existing.version}`);
+      process.exit(0);
+    }
+  } catch (e) {}
+}
+
 function getLatestMtime(dir) {
   let maxMtime = 0;
   
   function walk(currentDir) {
     const files = fs.readdirSync(currentDir);
     for (const file of files) {
-      if (['node_modules', '.next', '.git', 'database.sqlite'].includes(file)) {
+      if (['node_modules', '.next', '.git', 'database.sqlite', 'deploy_temp'].includes(file)) {
         continue;
       }
       const fullPath = path.join(currentDir, file);
@@ -35,8 +48,8 @@ function getLatestMtime(dir) {
   return maxMtime;
 }
 
-const projectDir = path.resolve(__dirname, '..');
-const latestTimeMs = getLatestMtime(projectDir);
+const forceCurrent = process.argv.includes('--current');
+const latestTimeMs = forceCurrent ? Date.now() : (getLatestMtime(projectDir) || Date.now());
 
 let versionStr = 'verzia 0.0.0';
 if (latestTimeMs > 0) {
@@ -64,6 +77,5 @@ if (latestTimeMs > 0) {
   versionStr = `verzia ${year}.${month}.${day}.${hour}.${minute}`;
 }
 
-const versionFilePath = path.join(projectDir, 'lib', 'version.json');
 fs.writeFileSync(versionFilePath, JSON.stringify({ version: versionStr }, null, 2));
 console.log(`Generated version: ${versionStr} -> ${versionFilePath}`);

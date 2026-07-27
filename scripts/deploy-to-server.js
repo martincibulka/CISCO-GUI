@@ -59,11 +59,19 @@ function executeCommand(conn, cmd, password, logPrefix = '') {
   });
 }
 
+const { execSync } = require('child_process');
+
 conn.on('ready', async () => {
   console.log('SSH connection established successfully.');
 
   try {
     const projectDir = path.resolve(__dirname, '..');
+    console.log('Generating deployment version timestamp...');
+    try {
+      execSync('node scripts/generate-version.js --current', { cwd: projectDir, stdio: 'inherit' });
+    } catch (e) {
+      console.error('Failed to generate version:', e);
+    }
     const files = getFiles(projectDir);
     console.log(`Found ${files.length} files to upload.`);
 
@@ -134,7 +142,7 @@ conn.on('ready', async () => {
     console.log('Rebuilding and restarting docker compose containers...');
     await executeCommand(
       conn,
-      `sudo -S sh -c 'cd "${targetDir}" && docker compose up --build -d --remove-orphans'`,
+      `sudo -S sh -c 'cd "${targetDir}" && docker compose build --no-cache && docker compose down && docker compose up -d --remove-orphans'`,
       password
     );
 

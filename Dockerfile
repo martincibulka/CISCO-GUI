@@ -20,6 +20,7 @@ RUN chmod -R +x node_modules/.bin
 RUN npm rebuild sqlite3 --build-from-source
 
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV PRESERVE_VERSION true
 RUN npm run build
 
 # Production image, copy all the files and run next
