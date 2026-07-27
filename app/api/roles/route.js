@@ -10,7 +10,7 @@ export async function GET() {
 
   try {
     const db = await openDb();
-    const roles = await db.all('SELECT id, name, edit_users, edit_switches, edit_roles FROM app_roles');
+    const roles = await db.all('SELECT id, name, edit_users, edit_switches, edit_roles, view_logs FROM app_roles');
     return NextResponse.json(roles);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -29,7 +29,7 @@ export async function POST(request) {
   }
 
   try {
-    const { name, edit_users, edit_switches, edit_roles } = await request.json();
+    const { name, edit_users, edit_switches, edit_roles, view_logs } = await request.json();
     if (!name || name.trim() === "") {
       return NextResponse.json({ error: 'Názov oprávnenia je povinný' }, { status: 400 });
     }
@@ -40,7 +40,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Oprávnenie s týmto názvom už existuje' }, { status: 400 });
     }
 
-    await db.run('INSERT INTO app_roles (name, edit_users, edit_switches, edit_roles) VALUES (?, ?, ?, ?)', [name.trim(), edit_users ? 1 : 0, edit_switches ? 1 : 0, edit_roles ? 1 : 0]);
+    await db.run('INSERT INTO app_roles (name, edit_users, edit_switches, edit_roles, view_logs) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), edit_users ? 1 : 0, edit_switches ? 1 : 0, edit_roles ? 1 : 0, view_logs ? 1 : 0]);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
