@@ -19,7 +19,13 @@ export default function SettingsModal({ isOpen, onClose }) {
 
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("users");
-  const [permissions, setPermissions] = useState({ edit_users: false, edit_switches: false, edit_roles: false });
+  const [permissions, setPermissions] = useState({ edit_users: false, edit_switches: false, edit_roles: false, view_logs: false });
+
+  // Logs state
+  const [switches, setSwitches] = useState([]);
+  const [logSwitchId, setLogSwitchId] = useState('');
+  const [logEntries, setLogEntries] = useState([]);
+  const [logLoading, setLogLoading] = useState(false);
 
   const fetchPermissions = async () => {
     try {
@@ -65,11 +71,32 @@ export default function SettingsModal({ isOpen, onClose }) {
     }
   };
 
+  const fetchSwitchesList = async () => {
+    try {
+      const res = await fetch('/api/switches');
+      if (res.ok) setSwitches(await res.json());
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchLogs = async (switchId) => {
+    if (!switchId) { setLogEntries([]); return; }
+    setLogLoading(true);
+    try {
+      const res = await fetch(`/api/switches/${switchId}/changelog`);
+      if (res.ok) {
+        const data = await res.json();
+        setLogEntries(data.logs || []);
+      }
+    } catch (e) { console.error(e); }
+    setLogLoading(false);
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
       fetchRoles();
       fetchPermissions();
+      fetchSwitchesList();
       setError("");
       setNewUsername("");
       setNewPassword("");
@@ -78,6 +105,8 @@ export default function SettingsModal({ isOpen, onClose }) {
       setNewRoleName("");
       setEditingRoleId(null);
       setEditRoleName("");
+      setLogSwitchId('');
+      setLogEntries([]);
       setActiveTab("users");
     }
   }, [isOpen]);
@@ -321,6 +350,36 @@ export default function SettingsModal({ isOpen, onClose }) {
               </svg>
               Oprávnenia
             </button>
+
+            {permissions.view_logs && (
+              <button
+                onClick={() => { setActiveTab("logs"); setError(""); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  width: '100%',
+                  padding: '12px 24px',
+                  background: activeTab === "logs" ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                  border: 'none',
+                  borderLeft: activeTab === "logs" ? '4px solid #38bdf8' : '4px solid transparent',
+                  color: activeTab === "logs" ? '#38bdf8' : '#94a3b8',
+                  textAlign: 'left',
+                  fontSize: '1.4rem',
+                  fontWeight: activeTab === "logs" ? '600' : '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Logy
+              </button>
+            )}
           </div>
 
           {/* Right Content Area */}
@@ -505,9 +564,10 @@ export default function SettingsModal({ isOpen, onClose }) {
                     {/* Table Header */}
                     <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
                       <div style={{ flex: 2 }}>Oprávnenie</div>
-                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie užívateľov</div>
-                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie switchov</div>
-                      <div style={{ flex: 1.8, textAlign: 'center' }}>Editovanie oprávnení</div>
+                      <div style={{ flex: 1.6, textAlign: 'center' }}>Editovanie užívateľov</div>
+                      <div style={{ flex: 1.6, textAlign: 'center' }}>Editovanie switchov</div>
+                      <div style={{ flex: 1.6, textAlign: 'center' }}>Editovanie oprávnení</div>
+                      <div style={{ flex: 1.6, textAlign: 'center' }}>Logy</div>
                       <div style={{ width: '40px', textAlign: 'right' }}></div>
                     </div>
                     {/* Table Body */}
@@ -622,7 +682,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </div>
 
                             {/* Checkbox: edit_roles */}
-                            <div style={{ flex: 1.8, display: 'flex', justifyContent: 'center' }}>
+                            <div style={{ flex: 1.6, display: 'flex', justifyContent: 'center' }}>
                               <input
                                 type="checkbox"
                                 checked={r.edit_roles === 1}
@@ -648,8 +708,35 @@ export default function SettingsModal({ isOpen, onClose }) {
                               />
                             </div>
 
+                            {/* Checkbox: view_logs */}
+                            <div style={{ flex: 1.6, display: 'flex', justifyContent: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={r.view_logs === 1}
+                                disabled={!permissions.edit_roles}
+                                onChange={async (e) => {
+                                  try {
+                                    const res = await fetch(`/api/roles/${r.id}`, {
+                                      method: "PUT",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ view_logs: e.target.checked })
+                                    });
+                                    if (res.ok) {
+                                      fetchRoles();
+                                    } else {
+                                      const data = await res.json();
+                                      setError(data.error || "Nepodarilo sa zmeniť oprávnenia");
+                                    }
+                                  } catch (err) {
+                                    setError("Chyba pripojenia k serveru");
+                                  }
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: permissions.edit_roles ? 'pointer' : 'default' }}
+                              />
+                            </div>
+
                             {/* Delete X Button */}
-                            <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
                               {permissions.edit_roles && r.name !== 'admin' && !isEditing && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
@@ -703,6 +790,90 @@ export default function SettingsModal({ isOpen, onClose }) {
                     </button>
                   </form>
                 )}
+              </>
+            )}
+
+            {activeTab === "logs" && permissions.view_logs && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Log zmien portov</h3>
+                    <select
+                      value={logSwitchId}
+                      onChange={e => { setLogSwitchId(e.target.value); fetchLogs(e.target.value); }}
+                      style={{ backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '6px', padding: '6px 12px', color: '#f1f5f9', fontSize: '1.3rem', cursor: 'pointer' }}
+                    >
+                      <option value="">-- Vybrať switch --</option>
+                      {switches.map(sw => (
+                        <option key={sw.id} value={sw.id}>{sw.name} ({sw.ip_address})</option>
+                      ))}
+                    </select>
+                    {logSwitchId && (
+                      <button
+                        onClick={() => fetchLogs(logSwitchId)}
+                        style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '6px', padding: '6px 12px', color: '#94a3b8', fontSize: '1.3rem', cursor: 'pointer' }}
+                      >↻ Obnoviť</button>
+                    )}
+                  </div>
+
+                  {logLoading && <div style={{ color: '#64748b', fontSize: '1.3rem' }}>Načítavam...</div>}
+
+                  {!logLoading && logSwitchId && logEntries.length === 0 && (
+                    <div style={{ color: '#64748b', fontSize: '1.3rem', padding: '20px', textAlign: 'center', border: '1px dashed #334155', borderRadius: '8px' }}>Žiadne záznamy pre tento switch.</div>
+                  )}
+
+                  {!logLoading && logEntries.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
+                      {/* Table Header */}
+                      <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '10px 16px', fontWeight: '600', fontSize: '1.25rem', color: '#94a3b8' }}>
+                        <div style={{ flex: 1.8 }}>Čas</div>
+                        <div style={{ flex: 1 }}>Port</div>
+                        <div style={{ flex: 1 }}>Pole</div>
+                        <div style={{ flex: 2 }}>Zmena</div>
+                        <div style={{ flex: 1.2 }}>Zmenil</div>
+                        <div style={{ flex: 0.8, textAlign: 'center' }}>Zdroj</div>
+                      </div>
+                      {/* Table Body */}
+                      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '340px', overflowY: 'auto' }}>
+                        {logEntries.map((entry, idx) => {
+                          const isExternal = entry.source === 'external';
+                          return (
+                            <div
+                              key={entry.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '9px 16px',
+                                backgroundColor: isExternal
+                                  ? (idx % 2 === 0 ? 'rgba(251,146,60,0.07)' : 'rgba(251,146,60,0.04)')
+                                  : (idx % 2 === 0 ? '#1e293b' : '#1b2537'),
+                                borderBottom: idx === logEntries.length - 1 ? 'none' : '1px solid #334155',
+                                fontSize: '1.25rem'
+                              }}
+                            >
+                              <div style={{ flex: 1.8, color: '#64748b', fontFamily: 'monospace', fontSize: '1.15rem' }}>{entry.changed_at}</div>
+                              <div style={{ flex: 1, color: '#38bdf8', fontWeight: '600' }}>{entry.port_name}</div>
+                              <div style={{ flex: 1, color: '#94a3b8' }}>{entry.field}</div>
+                              <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ color: '#f87171', fontSize: '1.15rem' }}>{entry.old_value || '—'}</span>
+                                <span style={{ color: '#475569' }}>→</span>
+                                <span style={{ color: '#4ade80', fontSize: '1.15rem' }}>{entry.new_value || '—'}</span>
+                              </div>
+                              <div style={{ flex: 1.2, color: '#f1f5f9' }}>{entry.changed_by}</div>
+                              <div style={{ flex: 0.8, textAlign: 'center' }}>
+                                {isExternal ? (
+                                  <span title="Externá zmena" style={{ color: '#fb923c', fontSize: '1.3rem' }}>⚠️</span>
+                                ) : (
+                                  <span title="Zmena cez aplikáciu" style={{ color: '#4ade80', fontSize: '1.1rem' }}>✓</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

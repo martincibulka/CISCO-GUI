@@ -461,6 +461,13 @@ export default function Pane({ title }) {
             });
             
             if (parsedPorts.length > 0 && selectedSwitch) {
+              // First sync to detect external changes, then bulk upsert
+              fetch(`/api/switches/${selectedSwitch}/ports/sync`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ports: parsedPorts })
+              }).catch(e => console.error("Sync error", e));
+
               fetch(`/api/switches/${selectedSwitch}/ports/bulk`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

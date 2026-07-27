@@ -16,7 +16,7 @@ export async function PUT(request, { params }) {
   const { id } = await params;
 
   try {
-    const { name, edit_users, edit_switches, edit_roles } = await request.json();
+    const { name, edit_users, edit_switches, edit_roles, view_logs } = await request.json();
     const db = await openDb();
     
     const role = await db.get('SELECT * FROM app_roles WHERE id = ?', [id]);
@@ -37,8 +37,10 @@ export async function PUT(request, { params }) {
     const editUsersVal = edit_users !== undefined ? (edit_users ? 1 : 0) : role.edit_users;
     const editSwitchesVal = edit_switches !== undefined ? (edit_switches ? 1 : 0) : role.edit_switches;
     const editRolesVal = edit_roles !== undefined ? (edit_roles ? 1 : 0) : role.edit_roles;
+    const viewLogsVal = view_logs !== undefined ? (view_logs ? 1 : 0) : (role.view_logs ?? 0);
 
-    await db.run('UPDATE app_roles SET name = ?, edit_users = ?, edit_switches = ?, edit_roles = ? WHERE id = ?', [targetName, editUsersVal, editSwitchesVal, editRolesVal, id]);
+    await db.run('UPDATE app_roles SET name = ?, edit_users = ?, edit_switches = ?, edit_roles = ?, view_logs = ? WHERE id = ?',
+      [targetName, editUsersVal, editSwitchesVal, editRolesVal, viewLogsVal, id]);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

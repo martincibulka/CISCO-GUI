@@ -73,7 +73,7 @@ export async function POST(request, { params }) {
     const finalMac = mac_address !== undefined ? mac_address : (existing ? existing.mac_address : "");
 
     // Upsert the port settings
-    const result = await db.run(`
+    await db.run(`
       INSERT INTO port_settings (switch_id, port_name, description, status, vlan, port_security, mac_address, last_updated, last_updated_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
       ON CONFLICT(switch_id, port_name) DO UPDATE SET
@@ -85,6 +85,25 @@ export async function POST(request, { params }) {
         last_updated=CURRENT_TIMESTAMP,
         last_updated_by=excluded.last_updated_by
     `, [id, port_name, finalDesc, finalStatus, finalVlan, finalPortSec, finalMac, username]);
+
+    // Log field-level changes
+    const fields = [
+      { key: 'description', old: existing?.description ?? '', new: finalDesc },
+      { key: 'status',      old: existing?.status ?? '',      new: finalStatus },
+      { key: 'vlan',        old: existing?.vlan ?? '',        new: finalVlan },
+      { key: 'port_security', old: existing?.port_security ?? '0', new: finalPortSec },
+    ];
+    for (const f of fields) {
+      const oldVal = String(f.old ?? '');
+      const newVal = String(f.new ?? '');
+      if (oldVal !== newVal) {
+        await db.run(
+          `INSERT INTO port_change_log (switch_id, port_name, field, old_value, new_value, changed_by, source)
+           VALUES (?, ?, ?, ?, ?, ?, 'app')`,
+          [id, port_name, f.key, oldVal, newVal, username]
+        );
+      }
+    }
 
     return NextResponse.json({ message: 'Port settings saved successfully' }, { status: 200 });
   } catch (error) {

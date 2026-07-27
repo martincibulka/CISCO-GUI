@@ -19,11 +19,13 @@ export async function GET() {
     const permissions = role ? {
       edit_users: role.edit_users === 1,
       edit_switches: role.edit_switches === 1,
-      edit_roles: role.edit_roles === 1
+      edit_roles: role.edit_roles === 1,
+      view_logs: role.view_logs === 1
     } : {
       edit_users: false,
       edit_switches: false,
-      edit_roles: false
+      edit_roles: false,
+      view_logs: false
     };
 
     return NextResponse.json({
