@@ -856,36 +856,47 @@ export default function Pane({ title }) {
             Connect
           </button>
         </div>
-        <div className="address-bar" style={{ position: 'relative' }}>
-          <input
-            type="text"
-            className="address-input"
-            placeholder="🔍 Vyhľadať v portoch (názov, popis, VLAN, status)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ paddingRight: searchTerm ? '32px' : '12px' }}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute',
-                right: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                fontSize: '1.2rem',
-                lineHeight: 1,
-                padding: '4px'
-              }}
-              title="Vymazať vyhľadávanie"
-            >
-              ✕
-            </button>
-          )}
+        <div className="address-bar">
+          <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
+            <input
+              type="text"
+              className="address-input"
+              placeholder="🔍 Vyhľadať v portoch (názov, popis, VLAN, status)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ paddingRight: searchTerm ? '32px' : '12px', width: '100%' }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <button 
+            className="btn-action btn-connect" 
+            onClick={() => executeCommand("sh int status")}
+            disabled={!isConnected}
+            style={{ 
+              opacity: isConnected ? 1 : 0.5, 
+              cursor: isConnected ? 'pointer' : 'not-allowed'
+            }}
+          >
+            Refresh
+          </button>
         </div>
       </div>
       <div className="pane-content" ref={contentRef}>
