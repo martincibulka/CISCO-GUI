@@ -8,6 +8,7 @@ loadEnvConfig(path.join(__dirname, '..'));
 const localFiles = [
   { local: path.join(__dirname, '..', 'components', 'Pane.js'), remoteTemp: '/home/antigravity/Pane.js', remoteDest: '/home/spravca/cisco GUI/components/Pane.js' },
   { local: path.join(__dirname, '..', 'components', 'SettingsModal.js'), remoteTemp: '/home/antigravity/SettingsModal.js', remoteDest: '/home/spravca/cisco GUI/components/SettingsModal.js' },
+  { local: path.join(__dirname, '..', 'components', 'MiddlePanel.js'), remoteTemp: '/home/antigravity/MiddlePanel.js', remoteDest: '/home/spravca/cisco GUI/components/MiddlePanel.js' },
   { local: path.join(__dirname, '..', 'lib', 'version.json'), remoteTemp: '/home/antigravity/version.json', remoteDest: '/home/spravca/cisco GUI/lib/version.json' },
   { local: path.join(__dirname, '..', 'scripts', 'generate-version.js'), remoteTemp: '/home/antigravity/generate-version.js', remoteDest: '/home/spravca/cisco GUI/scripts/generate-version.js' },
   { local: path.join(__dirname, '..', '.agents', 'AGENTS.md'), remoteTemp: '/home/antigravity/AGENTS.md', remoteDest: '/home/spravca/cisco GUI/.agents/AGENTS.md' }

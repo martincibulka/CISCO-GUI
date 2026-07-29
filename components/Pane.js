@@ -682,6 +682,15 @@ export default function Pane({ title }) {
     }
   };
 
+  const handleAppendPreset = (preset) => {
+    setContextMenu(prev => {
+      const current = prev.name ? prev.name.trim() : '';
+      if (current.includes(preset)) return prev;
+      const separator = current ? ' ' : '';
+      return { ...prev, name: `${current}${separator}${preset}` };
+    });
+  };
+
   const handleSaveContextMenu = async () => {
     let cmdSequence = `conf t\ninterface ${contextMenu.port}\n`;
     
@@ -1213,8 +1222,61 @@ export default function Pane({ title }) {
           </div>
 
           {/* Bottom section */}
-          <div style={{ borderTop: '1px solid #475569', padding: '12px 16px', minHeight: '56px' }}>
-            {/* Empty for now */}
+          <div style={{ borderTop: '1px solid #475569', padding: '12px 16px', display: 'flex', alignItems: 'center', minHeight: '56px' }}>
+            <span style={{ color: '#94a3b8', fontSize: '1.4rem', fontWeight: '500', width: '120px', flexShrink: 0 }}>Preset</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
+              <button 
+                title="Pridať 'PC' do popisu"
+                disabled={!permissions.edit_switches}
+                style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
+                onClick={(e) => { e.stopPropagation(); handleAppendPreset('PC'); }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </button>
+              <button 
+                title="Pridať 'PRT' do popisu"
+                disabled={!permissions.edit_switches}
+                style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
+                onClick={(e) => { e.stopPropagation(); handleAppendPreset('PRT'); }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+              </button>
+              <button 
+                title="Pridať 'VOIP' do popisu"
+                disabled={!permissions.edit_switches}
+                style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
+                onClick={(e) => { e.stopPropagation(); handleAppendPreset('VOIP'); }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </button>
+              <button 
+                title="Pridať 'VOIP PRT' do popisu"
+                disabled={!permissions.edit_switches}
+                style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
+                onClick={(e) => { e.stopPropagation(); handleAppendPreset('VOIP PRT'); }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <g transform="translate(-1, 8.5) scale(0.65)">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </g>
+                  <g transform="translate(9.5, 0) scale(0.65)">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                  </g>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}

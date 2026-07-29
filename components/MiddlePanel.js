@@ -2,10 +2,12 @@
 
 export default function MiddlePanel() {
   const sendCommand = (cmd) => {
+    // Dočasne vypnuté
+    return;
     window.dispatchEvent(new CustomEvent('run-command', { detail: cmd }));
   };
 
-  const buttonStyle = { opacity: 0.4, cursor: 'not-allowed' };
+  const buttonStyle = { opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' };
 
   return (
     <div className="middle-panel">
