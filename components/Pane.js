@@ -33,14 +33,12 @@ const reformatLines = (lines, dbPorts) => {
         const dbPort = dbPorts[rawName];
         let description = dbPort ? dbPort.description : line.substring(portName.length, statusMatch.index).trim();
         
-        if (description.length > 50) {
-          description = description.substring(0, 50);
-        }
+
         
         const duplex = afterStatus[1] || "";
         const speed = afterStatus[2] || "";
         
-        return `${pad(portName, 9)}${pad(description, 51)}${pad(status, 13)}${pad(vlan, 11)}${pad(duplex, 8)}${speed}`;
+        return `${pad(portName, 9)}${pad(description, 54)}${pad(status, 13)}${pad(vlan, 11)}${pad(duplex, 8)}${speed}`;
       }
     }
     return line;
@@ -759,12 +757,9 @@ export default function Pane({ title }) {
                 const afterStatus = line.substring(statusMatch.index + status.length).trim().split(/\s+/);
                 const vlan = contextMenu.vlan || afterStatus[0] || "";
                 let description = contextMenu.name || "";
-                if (description.length > 50) {
-                  description = description.substring(0, 50);
-                }
                 const duplex = afterStatus[1] || "";
                 const speed = afterStatus[2] || "";
-                return `${pad(portName, 9)}${pad(description, 51)}${pad(contextMenu.status === 'disabled' ? 'disabled' : status, 13)}${pad(vlan, 11)}${pad(duplex, 8)}${speed}`;
+                return `${pad(portName, 9)}${pad(description, 54)}${pad(contextMenu.status === 'disabled' ? 'disabled' : status, 13)}${pad(vlan, 11)}${pad(duplex, 8)}${speed}`;
               }
             }
           }

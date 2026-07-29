@@ -4,6 +4,11 @@ const path = require('path');
 const projectDir = path.resolve(__dirname, '..');
 const versionFilePath = path.join(projectDir, 'lib', 'version.json');
 
+if (process.env.PRESERVE_VERSION === 'true') {
+  console.log('Preserving existing version.json');
+  process.exit(0);
+}
+
 const date = new Date();
 const formatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'Europe/Bratislava',

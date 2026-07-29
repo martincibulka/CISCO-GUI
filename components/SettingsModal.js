@@ -26,6 +26,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [logSwitchId, setLogSwitchId] = useState('');
   const [logEntries, setLogEntries] = useState([]);
   const [logLoading, setLogLoading] = useState(false);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   const fetchPermissions = async () => {
     try {
@@ -108,6 +109,7 @@ export default function SettingsModal({ isOpen, onClose }) {
       setLogSwitchId('');
       setLogEntries([]);
       setActiveTab("users");
+      setIsAddUserOpen(false);
     }
   }, [isOpen]);
 
@@ -130,6 +132,7 @@ export default function SettingsModal({ isOpen, onClose }) {
       if (res.ok) {
         setNewUsername("");
         setNewPassword("");
+        setIsAddUserOpen(false);
         fetchUsers();
       } else {
         setError(data.error || "Nepodarilo sa pridať používateľa");
@@ -394,7 +397,66 @@ export default function SettingsModal({ isOpen, onClose }) {
               <>
                 {/* User List Table */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálni používatelia</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Aktuálni používatelia</h3>
+                    {permissions.edit_users && (
+                      <button
+                        onClick={() => setIsAddUserOpen(!isAddUserOpen)}
+                        style={{
+                          backgroundColor: isAddUserOpen ? '#ef4444' : '#22c55e',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '6px 14px',
+                          cursor: 'pointer',
+                          fontSize: '1.3rem',
+                          fontWeight: '600',
+                          transition: 'background-color 0.2s'
+                        }}
+                      >
+                        {isAddUserOpen ? 'Zrušiť' : '+ Pridať používateľa'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Add User Form */}
+                  {permissions.edit_users && isAddUserOpen && (
+                    <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '10px' }}>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nového používateľa</h3>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          placeholder="Používateľské meno"
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value)}
+                          style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                        />
+                        <input
+                          type="password"
+                          placeholder="Heslo"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
+                        />
+                        <select
+                          value={newUserRole}
+                          onChange={(e) => setNewUserRole(e.target.value)}
+                          style={{ flex: 1.5, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem', outline: 'none', cursor: 'pointer' }}
+                        >
+                          {roles.map(r => (
+                            <option key={r.id} value={r.name} style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="submit"
+                        style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
+                      >
+                        + Pridať používateľa
+                      </button>
+                    </form>
+                  )}
+
                   <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
                     {/* Table Header */}
                     <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 16px', fontWeight: '600', fontSize: '1.4rem', color: '#94a3b8' }}>
@@ -431,7 +493,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                   style={{ backgroundColor: '#1e293b', border: '1px solid #38bdf8', borderRadius: '6px', padding: '4px 8px', color: '#f1f5f9', fontSize: '1.2rem', width: '140px', cursor: 'pointer', outline: 'none' }}
                                 >
                                   {roles.map(r => (
-                                    <option key={r.id} value={r.name}>{r.name}</option>
+                                    <option key={r.id} value={r.name} style={{ backgroundColor: '#1e293b', color: '#f1f5f9' }}>{r.name}</option>
                                   ))}
                                 </select>
                               ) : (
@@ -515,44 +577,6 @@ export default function SettingsModal({ isOpen, onClose }) {
                     </div>
                   </div>
                 </div>
-
-                {/* Add User Form */}
-                {permissions.edit_users && (
-                  <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #334155', paddingTop: '20px', marginTop: '10px' }}>
-                    <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Pridať nového používateľa</h3>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        placeholder="Používateľské meno"
-                        value={newUsername}
-                        onChange={(e) => setNewUsername(e.target.value)}
-                        style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Heslo"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        style={{ flex: 2, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem' }}
-                      />
-                      <select
-                        value={newUserRole}
-                        onChange={(e) => setNewUserRole(e.target.value)}
-                        style={{ flex: 1.5, backgroundColor: '#0f172a', border: '1px solid #475569', borderRadius: '4px', padding: '8px 12px', color: '#f1f5f9', fontSize: '1.3rem', height: '37px' }}
-                      >
-                        {roles.map(r => (
-                          <option key={r.id} value={r.name}>{r.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      type="submit"
-                      style={{ backgroundColor: '#22c55e', color: '#fff', border: 'none', borderRadius: '4px', padding: '10px 16px', cursor: 'pointer', fontSize: '1.4rem', fontWeight: '600', alignSelf: 'flex-start', marginTop: '6px' }}
-                    >
-                      + Pridať používateľa
-                    </button>
-                  </form>
-                )}
               </>
             )}
 
@@ -795,7 +819,7 @@ export default function SettingsModal({ isOpen, onClose }) {
 
             {activeTab === "logs" && permissions.view_logs && (
               <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                     <h3 style={{ fontSize: '1.6rem', fontWeight: '600', color: '#f1f5f9', margin: 0 }}>Log zmien portov</h3>
                     <select
@@ -823,18 +847,18 @@ export default function SettingsModal({ isOpen, onClose }) {
                   )}
 
                   {!logLoading && logEntries.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden', flex: 1, minHeight: 0 }}>
                       {/* Table Header */}
                       <div style={{ display: 'flex', backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '10px 16px', fontWeight: '600', fontSize: '1.25rem', color: '#94a3b8' }}>
-                        <div style={{ flex: 1.8 }}>Čas</div>
-                        <div style={{ flex: 1 }}>Port</div>
-                        <div style={{ flex: 1 }}>Pole</div>
-                        <div style={{ flex: 2 }}>Zmena</div>
-                        <div style={{ flex: 1.2 }}>Zmenil</div>
-                        <div style={{ flex: 0.8, textAlign: 'center' }}>Zdroj</div>
+                        <div style={{ width: '160px', flexShrink: 0 }}>Čas</div>
+                        <div style={{ width: '75px', flexShrink: 0 }}>Port</div>
+                        <div style={{ width: '100px', flexShrink: 0 }}>Pole</div>
+                        <div style={{ flex: 1 }}>Zmena</div>
+                        <div style={{ width: '77px', flexShrink: 0 }}>Zmenil</div>
+                        <div style={{ width: '60px', flexShrink: 0, textAlign: 'center' }}>Zdroj</div>
                       </div>
                       {/* Table Body */}
-                      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '340px', overflowY: 'auto' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                         {logEntries.map((entry, idx) => {
                           const isExternal = entry.source === 'external';
                           return (
@@ -848,23 +872,23 @@ export default function SettingsModal({ isOpen, onClose }) {
                                   ? (idx % 2 === 0 ? 'rgba(251,146,60,0.07)' : 'rgba(251,146,60,0.04)')
                                   : (idx % 2 === 0 ? '#1e293b' : '#1b2537'),
                                 borderBottom: idx === logEntries.length - 1 ? 'none' : '1px solid #334155',
-                                fontSize: '1.25rem'
+                                fontSize: '1.0rem'
                               }}
                             >
-                              <div style={{ flex: 1.8, color: '#64748b', fontFamily: 'monospace', fontSize: '1.15rem' }}>{entry.changed_at}</div>
-                              <div style={{ flex: 1, color: '#38bdf8', fontWeight: '600' }}>{entry.port_name}</div>
-                              <div style={{ flex: 1, color: '#94a3b8' }}>{entry.field}</div>
-                              <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ color: '#f87171', fontSize: '1.15rem' }}>{entry.old_value || '—'}</span>
+                              <div style={{ width: '160px', flexShrink: 0, color: '#64748b', fontFamily: 'monospace', fontSize: '0.9rem' }}>{entry.changed_at}</div>
+                              <div style={{ width: '75px', flexShrink: 0, color: '#38bdf8', fontWeight: '600' }}>{entry.port_name}</div>
+                              <div style={{ width: '100px', flexShrink: 0, color: '#94a3b8' }}>{entry.field}</div>
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                                <span style={{ color: '#f87171', fontSize: '0.9rem' }}>{entry.old_value || '—'}</span>
                                 <span style={{ color: '#475569' }}>→</span>
-                                <span style={{ color: '#4ade80', fontSize: '1.15rem' }}>{entry.new_value || '—'}</span>
+                                <span style={{ color: '#4ade80', fontSize: '0.9rem' }}>{entry.new_value || '—'}</span>
                               </div>
-                              <div style={{ flex: 1.2, color: '#f1f5f9' }}>{entry.changed_by}</div>
-                              <div style={{ flex: 0.8, textAlign: 'center' }}>
+                              <div style={{ width: '77px', flexShrink: 0, color: '#f1f5f9' }}>{entry.changed_by}</div>
+                              <div style={{ width: '60px', flexShrink: 0, textAlign: 'center' }}>
                                 {isExternal ? (
-                                  <span title="Externá zmena" style={{ color: '#fb923c', fontSize: '1.3rem' }}>⚠️</span>
+                                  <span title="Externá zmena" style={{ color: '#fb923c', fontSize: '1.05rem' }}>⚠️</span>
                                 ) : (
-                                  <span title="Zmena cez aplikáciu" style={{ color: '#4ade80', fontSize: '1.1rem' }}>✓</span>
+                                  <span title="Zmena cez aplikáciu" style={{ color: '#4ade80', fontSize: '0.9rem' }}>✓</span>
                                 )}
                               </div>
                             </div>
