@@ -92,6 +92,45 @@ export default function SettingsModal({ isOpen, onClose }) {
     setLogLoading(false);
   };
 
+  const handleExportCSV = () => {
+    if (logEntries.length === 0) return;
+    
+    const headers = ["Čas", "Port", "Pole", "Stará hodnota", "Nová hodnota", "Zmenil", "Zdroj"];
+    const rows = logEntries.map(entry => [
+      entry.changed_at || "",
+      entry.port_name || "",
+      entry.field || "",
+      entry.old_value || "",
+      entry.new_value || "",
+      entry.changed_by || "",
+      entry.source === 'external' ? "Externá zmena" : "Cez aplikáciu"
+    ]);
+
+    const escapeCsvValue = (val) => {
+      const escaped = String(val).replace(/"/g, '""');
+      return `"${escaped}"`;
+    };
+
+    const csvContent = [
+      headers.map(escapeCsvValue).join(";"),
+      ...rows.map(row => row.map(escapeCsvValue).join(";"))
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    const switchName = switches.find(sw => String(sw.id) === String(logSwitchId))?.name || "switch";
+    const safeSwitchName = switchName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `log_zmien_${safeSwitchName}_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
@@ -837,6 +876,34 @@ export default function SettingsModal({ isOpen, onClose }) {
                         onClick={() => fetchLogs(logSwitchId)}
                         style={{ background: 'transparent', border: '1px solid #475569', borderRadius: '6px', padding: '6px 12px', color: '#94a3b8', fontSize: '1.3rem', cursor: 'pointer' }}
                       >↻ Obnoviť</button>
+                    )}
+                    {logSwitchId && logEntries.length > 0 && (
+                      <button
+                        onClick={handleExportCSV}
+                        style={{ 
+                          backgroundColor: '#22c55e', 
+                          border: 'none', 
+                          borderRadius: '6px', 
+                          padding: '6px 12px', 
+                          color: '#fff', 
+                          fontSize: '1.3rem', 
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#22c55e'}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Exportovať do Excelu
+                      </button>
                     )}
                   </div>
 

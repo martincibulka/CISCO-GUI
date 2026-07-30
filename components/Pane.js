@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import EditModal from "./EditModal";
 import ConnectModal from "./ConnectModal";
 const pad = (str, len) => {
@@ -79,6 +80,7 @@ export default function Pane({ title }) {
   const [newVlanName, setNewVlanName] = useState('');
   const [dbPorts, setDbPorts] = useState({});
   const [permissions, setPermissions] = useState({ edit_users: false, edit_switches: false, edit_roles: false });
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -133,6 +135,7 @@ export default function Pane({ title }) {
   useEffect(() => {
     fetchSwitches();
     fetchVlans();
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -682,13 +685,112 @@ export default function Pane({ title }) {
     }
   };
 
-  const handleAppendPreset = (preset) => {
-    setContextMenu(prev => {
-      const current = prev.name ? prev.name.trim() : '';
-      if (current.includes(preset)) return prev;
-      const separator = current ? ' ' : '';
-      return { ...prev, name: `${current}${separator}${preset}` };
-    });
+  const handleApplyPreset = async (presetType) => {
+    if (!contextMenu.port) return;
+
+    let description = "";
+    let status = "enabled";
+    let vlan = "";
+    let portSecurity = "0";
+    let cmdSequence = "";
+
+    if (presetType === 'default') {
+      cmdSequence = `conf t\ndefault interface ${contextMenu.port}\nend`;
+      description = "";
+      status = "enabled";
+      vlan = "";
+      portSecurity = "0";
+    } else {
+      cmdSequence = `conf t\ninterface ${contextMenu.port}\n`;
+      if (presetType === 'PC') {
+        description = "PC";
+        vlan = "120";
+        portSecurity = "1";
+        cmdSequence += `description PC\nswitchport access vlan 120\nswitchport mode access\nswitchport port-security maximum 1\nswitchport port-security\nswitchport port-security mac-address sticky\nspanning-tree portfast\nstorm-control broadcast level 5.00\nstorm-control action shutdown\nend`;
+      } else if (presetType === 'PRT') {
+        description = "PRT";
+        vlan = "106";
+        portSecurity = "1";
+        cmdSequence += `description PRT\nswitchport access vlan 106\nswitchport mode access\nswitchport port-security maximum 1\nswitchport port-security\nswitchport port-security mac-address sticky\nstorm-control broadcast level 5.00\nstorm-control action shutdown\nspanning-tree portfast\nend`;
+      } else if (presetType === 'VOIP') {
+        description = "VOIP";
+        vlan = "111";
+        portSecurity = "1";
+        cmdSequence += `description VOIP\nswitchport access vlan 111\nswitchport mode access\nswitchport port-security maximum 1\nswitchport port-security\nswitchport port-security mac-address sticky\nstorm-control broadcast level 5.00\nstorm-control action shutdown\nspanning-tree portfast\nend`;
+      } else if (presetType === 'VOIP_PRT') {
+        description = "VOIP PRT";
+        vlan = "106";
+        portSecurity = "2";
+        cmdSequence += `description VOIP PRT\nswitchport access vlan 106\nswitchport mode access\nswitchport voice vlan 111\nswitchport port-security maximum 2\nswitchport port-security\nswitchport port-security mac-address sticky\nstorm-control broadcast level 5.00\nstorm-control action shutdown\nspanning-tree portfast\nend`;
+      }
+    }
+
+    // Close context menu
+    setContextMenu(prev => ({ ...prev, visible: false }));
+    setMenuPos({ x: null, y: null });
+    setVlanEditorOpen(false);
+
+    // Execute commands
+    executeCommand(cmdSequence);
+
+    // Sync database and local state
+    if (selectedSwitch) {
+      try {
+        await fetch(`/api/switches/${selectedSwitch}/ports`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            port_name: contextMenu.port,
+            description,
+            status,
+            vlan,
+            port_security: portSecurity,
+            mac_address: presetType === 'default' ? "" : (contextMenu.mac !== 'Loading...' && contextMenu.mac !== 'Error' ? contextMenu.mac : "")
+          })
+        });
+
+        // Update local state directly
+        setDbPorts(prev => ({
+          ...prev,
+          [contextMenu.port]: {
+            ...prev[contextMenu.port],
+            port_name: contextMenu.port,
+            description,
+            status,
+            vlan,
+            port_security: portSecurity,
+            mac_address: presetType === 'default' ? "" : (contextMenu.mac !== 'Loading...' && contextMenu.mac !== 'Error' ? contextMenu.mac : "")
+          }
+        }));
+
+        // Update the description in logs state as well
+        setLogs(prev => prev.map(line => {
+          const portMatch = line.match(/^([A-Za-z]+\d+(?:\/\d+)*)\s/);
+          if (portMatch) {
+            const portName = portMatch[1];
+            let rawName = portName;
+            if (/^g[a-z]*\s*(\d+.*)/i.test(rawName)) rawName = rawName.replace(/^g[a-z]*\s*(\d+.*)/i, 'Gi$1');
+            else if (/^f[a-z]*\s*(\d+.*)/i.test(rawName)) rawName = rawName.replace(/^f[a-z]*\s*(\d+.*)/i, 'Fa$1');
+            else if (/^t[a-z]*\s*(\d+.*)/i.test(rawName)) rawName = rawName.replace(/^t[a-z]*\s*(\d+.*)/i, 'Te$1');
+
+            if (rawName === contextMenu.port) {
+              const statusMatch = line.match(/(connected|notconnect|disabled|err-disable)/);
+              if (statusMatch) {
+                const liveStatus = statusMatch[1];
+                const afterStatus = line.substring(statusMatch.index + liveStatus.length).trim().split(/\s+/);
+                const displayVlan = vlan || afterStatus[0] || "";
+                const duplex = afterStatus[1] || "";
+                const speed = afterStatus[2] || "";
+                return `${pad(portName, 9)}${pad(description, 54)}${pad(status === 'disabled' ? 'disabled' : liveStatus, 13)}${pad(displayVlan, 11)}${pad(duplex, 8)}${speed}`;
+              }
+            }
+          }
+          return line;
+        }));
+      } catch (e) {
+        console.error("Preset sync error", e);
+      }
+    }
   };
 
   const handleSaveContextMenu = async () => {
@@ -789,10 +891,9 @@ export default function Pane({ title }) {
     if (e.target.closest('button')) return;
     
     const rect = contextMenuRef.current.getBoundingClientRect();
-    const parentRect = contextMenuRef.current.parentElement.getBoundingClientRect();
     
-    const currentLeft = rect.left - parentRect.left + rect.width / 2;
-    const currentTop = rect.top - parentRect.top + rect.height / 2;
+    const currentLeft = rect.left + rect.width / 2;
+    const currentTop = rect.top + rect.height / 2;
     
     const initialX = menuPos.x !== null ? menuPos.x : currentLeft;
     const initialY = menuPos.y !== null ? menuPos.y : currentTop;
@@ -818,9 +919,28 @@ export default function Pane({ title }) {
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     
+    let newX = dragRef.current.initialX + dx;
+    let newY = dragRef.current.initialY + dy;
+    
+    const rect = contextMenuRef.current.getBoundingClientRect();
+    const halfWidth = rect.width / 2;
+    const halfHeight = rect.height / 2;
+    
+    if (newX - halfWidth < 0) {
+      newX = halfWidth;
+    } else if (newX + halfWidth > window.innerWidth) {
+      newX = window.innerWidth - halfWidth;
+    }
+    
+    if (newY - halfHeight < 0) {
+      newY = halfHeight;
+    } else if (newY + halfHeight > window.innerHeight) {
+      newY = window.innerHeight - halfHeight;
+    }
+    
     setMenuPos({
-      x: dragRef.current.initialX + dx,
-      y: dragRef.current.initialY + dy
+      x: newX,
+      y: newY
     });
   };
 
@@ -1006,12 +1126,12 @@ export default function Pane({ title }) {
         ipAddress={ipAddress}
         prefilledUsername={switches.find((s) => s.ip_address === ipAddress)?.username}
       />
-      {contextMenu.visible && (
+      {contextMenu.visible && mounted && createPortal(
         <div 
           ref={contextMenuRef}
           className="context-menu" 
           style={{ 
-            position: 'absolute', 
+            position: 'fixed', 
             top: menuPos.y !== null ? `${menuPos.y}px` : '50%', 
             left: menuPos.x !== null ? `${menuPos.x}px` : '50%',
             transform: 'translate(-50%, -50%)',
@@ -1226,10 +1346,10 @@ export default function Pane({ title }) {
             <span style={{ color: '#94a3b8', fontSize: '1.4rem', fontWeight: '500', width: '120px', flexShrink: 0 }}>Preset</span>
             <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, alignItems: 'center' }}>
               <button 
-                title="Pridať 'PC' do popisu"
+                title="Použiť preset PC"
                 disabled={!permissions.edit_switches}
                 style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
-                onClick={(e) => { e.stopPropagation(); handleAppendPreset('PC'); }}
+                onClick={(e) => { e.stopPropagation(); handleApplyPreset('PC'); }}
               >
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -1238,10 +1358,10 @@ export default function Pane({ title }) {
                 </svg>
               </button>
               <button 
-                title="Pridať 'PRT' do popisu"
+                title="Použiť preset PRT"
                 disabled={!permissions.edit_switches}
                 style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
-                onClick={(e) => { e.stopPropagation(); handleAppendPreset('PRT'); }}
+                onClick={(e) => { e.stopPropagation(); handleApplyPreset('PRT'); }}
               >
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -1250,20 +1370,20 @@ export default function Pane({ title }) {
                 </svg>
               </button>
               <button 
-                title="Pridať 'VOIP' do popisu"
+                title="Použiť preset VOIP"
                 disabled={!permissions.edit_switches}
                 style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
-                onClick={(e) => { e.stopPropagation(); handleAppendPreset('VOIP'); }}
+                onClick={(e) => { e.stopPropagation(); handleApplyPreset('VOIP'); }}
               >
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                 </svg>
               </button>
               <button 
-                title="Pridať 'VOIP PRT' do popisu"
+                title="Použiť preset VOIP+PRT"
                 disabled={!permissions.edit_switches}
                 style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
-                onClick={(e) => { e.stopPropagation(); handleAppendPreset('VOIP PRT'); }}
+                onClick={(e) => { e.stopPropagation(); handleApplyPreset('VOIP_PRT'); }}
               >
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <g transform="translate(-1, 8.5) scale(0.65)">
@@ -1276,9 +1396,26 @@ export default function Pane({ title }) {
                   </g>
                 </svg>
               </button>
+              <button 
+                title="Použiť preset Default (Obnoviť port)"
+                disabled={!permissions.edit_switches}
+                style={{ background: 'transparent', border: 'none', cursor: permissions.edit_switches ? 'pointer' : 'not-allowed', color: '#38bdf8', display: 'flex', alignItems: 'center', padding: '4px', opacity: permissions.edit_switches ? 1 : 0.4 }}
+                onClick={(e) => { e.stopPropagation(); handleApplyPreset('default'); }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <g transform="translate(12, 12) scale(1.15) translate(-12, -12)">
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                    <path d="M3 3v5h5"></path>
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                    <path d="M16 16h5v5"></path>
+                  </g>
+                  <text x="12" y="14.5" fontSize="6.5" fill="currentColor" stroke="none" textAnchor="middle" fontFamily="sans-serif" fontWeight="bold" letterSpacing="0.5">DEF</text>
+                </svg>
+              </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
